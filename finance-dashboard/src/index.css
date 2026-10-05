@@ -33,6 +33,13 @@
   --panel-muted: #a3a394;
   --panel-line: #2a2a24;
   --panel-outline: #0e0e0c;
+  --panel-accent: #fff48d; /* butter actions on ink: 17:1 */
+  --panel-accent-contrast: #0e0e0c;
+  --panel-input-bg: #141411;
+  --panel-danger: #ff8a6e; /* 8.4:1 on #0e0e0c, 7.4:1 on #1c1c17 */
+  --panel-danger-bg: #3a1a12;
+  --panel-success: #46c98b; /* 8.1:1 */
+  --panel-success-bg: #12291d;
 
   --chart-surface: var(--panel-bg);
   --chart-series: #fff48d; /* 17:1 */
@@ -90,6 +97,11 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html {
+  /* Keeps focused and scrolled-to elements clear of the sticky header. */
+  scroll-padding-top: 88px;
 }
 
 body {
@@ -201,6 +213,7 @@ select {
   display: flex;
   gap: 4px;
   flex: 1;
+  min-width: 0; /* allow shrinking so overflow scrolls the nav, not the page */
   overflow-x: auto;
 }
 
@@ -261,6 +274,16 @@ select {
     display: none;
   }
 
+  /* On phones the header wraps to two rows, so it scrolls away rather than
+     permanently taking ~15% of the screen. */
+  .app-header {
+    position: static;
+  }
+
+  html {
+    scroll-padding-top: 0;
+  }
+
   .app-header-inner {
     gap: 8px 16px;
     padding: 10px 16px;
@@ -271,17 +294,19 @@ select {
   }
 
   /* Nav gets its own full-width row under the wordmark. */
+  /* Own row; links share the width, and the row scrolls sideways (instead
+     of the page) on screens too narrow for them. */
   .app-header nav {
     order: 3;
     flex-basis: 100%;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
     gap: 2px;
-    overflow: visible;
+    margin: 0 -10px;
+    padding: 0 0 2px;
   }
 
   .app-header nav a {
-    padding: 6px 4px;
+    flex: 1 0 auto;
+    padding: 6px 10px;
     font-size: 0.875rem;
     text-align: center;
   }
@@ -338,6 +363,7 @@ select {
     border-radius: 18px;
   }
 }
+
 
 /* ---------------------------------------------------------------------------
    Buttons: pills
@@ -405,8 +431,6 @@ select {
   width: 40px;
   min-height: 40px;
   padding: 0;
-  font-size: 1.25rem;
-  line-height: 1;
 }
 
 .link-button {
@@ -457,11 +481,13 @@ select:hover {
   border-color: var(--text);
 }
 
+/* Hover only darkens the border; focus adds a solid ring (ink on cream,
+   butter on ink panels), so the two are never confused. */
 input:focus-visible,
 select:focus-visible {
   border-color: var(--text);
-  outline: 3px solid color-mix(in srgb, var(--focus) 28%, transparent);
-  outline-offset: 0;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 input[type='date'] {
@@ -498,7 +524,7 @@ input[type='color'] {
   pointer-events: none;
 }
 
-.input-money input {
+.input-money input[type='text'] {
   padding-left: 28px;
   text-align: right;
   font-family: var(--font-mono);
@@ -604,7 +630,7 @@ input[type='color'] {
 .table tfoot td {
   border-top: 2px solid var(--outline);
   border-bottom: none;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .table .actions {
@@ -637,7 +663,9 @@ input[type='color'] {
   white-space: nowrap;
 }
 
-.note-inline {
+.note-inline,
+.date-inline,
+.label-short {
   display: none;
 }
 
@@ -667,7 +695,51 @@ input[type='color'] {
   }
 
   .col-budget {
-    width: 116px;
+    width: 104px;
+  }
+
+  /* Budget fields: smaller mono digits and tighter padding so a four-digit
+     budget (1300.00) fits inside a 104px field. */
+  .table td .input-money input[type='text'] {
+    padding-left: 22px;
+    padding-right: 8px;
+    font-size: 0.875rem;
+  }
+
+  .table td .input-money::before {
+    left: 9px;
+  }
+
+  .table .num {
+    font-size: 0.875rem;
+  }
+
+  .table .category-label {
+    font-size: 0.9375rem;
+  }
+
+  .table .btn-sm {
+    padding: 4px 10px;
+  }
+
+  .label-full {
+    display: none;
+  }
+
+  .label-short {
+    display: inline;
+  }
+
+  /* Expenses: the date moves under the amount, saving a column. */
+  .expense-table .col-date {
+    display: none;
+  }
+
+  .date-inline {
+    display: block;
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
   }
 
   /* Expenses: drop the Note column, show the note under the category. */
@@ -704,6 +776,46 @@ input[type='color'] {
 
   .expense-table .row-editing .inline-confirm {
     justify-content: flex-start;
+  }
+}
+
+/* The smallest phones: keep the budget field and row actions on screen. */
+@media (max-width: 360px) {
+  .col-this {
+    display: none;
+  }
+
+  /* Inner cell padding only; first/last cells keep the card's 18px edge. */
+  .table th,
+  .table td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .table .num {
+    font-size: 0.8125rem;
+  }
+
+  .table .btn-sm {
+    padding: 4px 6px;
+  }
+
+  .expense-form {
+    grid-template-columns: 1fr;
+  }
+
+  .app-header nav a {
+    padding: 6px 6px;
+    font-size: 0.8125rem;
+  }
+
+  .table .actions {
+    white-space: normal;
+  }
+
+  .table .actions .btn {
+    display: flex;
+    margin-left: auto;
   }
 }
 
@@ -755,6 +867,11 @@ input[type='color'] {
 
 .month-picker .btn-ghost:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent-contrast) 16%, transparent);
+}
+
+.month-picker .btn:focus-visible {
+  outline-color: var(--accent-contrast);
+  outline-offset: 2px;
 }
 
 .month-picker .btn-icon svg {
@@ -880,10 +997,6 @@ input[type='color'] {
   .hero-figure {
     color: var(--accent);
   }
-
-  .hero-critical .hero-figure {
-    color: var(--danger);
-  }
 }
 
 @media (max-width: 760px) {
@@ -911,15 +1024,22 @@ input[type='color'] {
 /* A chart card re-points the colour tokens at panel values, so everything
    inside (headings, buttons, the table view, skeletons) follows. */
 .chart-card {
+  --bg: var(--panel-bg);
   --surface: var(--panel-bg);
   --surface-muted: var(--panel-raised);
+  --input-bg: var(--panel-input-bg);
   --text: var(--panel-text);
   --text-muted: var(--panel-muted);
   --line: var(--panel-line);
   --outline: var(--panel-line);
-  --accent: #fff48d;
-  --accent-contrast: #0e0e0c;
-  --focus: #fff48d;
+  --accent: var(--panel-accent);
+  --accent-contrast: var(--panel-accent-contrast);
+  --focus: var(--panel-accent);
+  --danger: var(--panel-danger);
+  --danger-contrast: var(--panel-accent-contrast);
+  --danger-bg: var(--panel-danger-bg);
+  --success: var(--panel-success);
+  --success-bg: var(--panel-success-bg);
 
   background: var(--panel-bg);
   color: var(--panel-text);

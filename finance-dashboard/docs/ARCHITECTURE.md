@@ -112,7 +112,7 @@ flowchart TB
             C2["ExpenseTable<br/>(filter, edit, delete)"]
             C3["BudgetEditor<br/>(grid per category)"]
             C4["SummaryCards<br/>(spent / budget / remaining)"]
-            C5["Charts<br/>PaceChart · CategoryChart · InsightCallout"]
+            C5["Dashboard<br/>Hero · PaceChart · CategoryChart"]
             C6["MonthPicker"]
         end
 

@@ -113,14 +113,15 @@ export function buildCategoryRows(summary: CategorySummaryRow[]): CategoryRow[] 
 }
 
 // ---------------------------------------------------------------------------
-// Insight
+// Hero: the month's key fact
 // ---------------------------------------------------------------------------
 
-export type Insight = {
-  tone: 'good' | 'critical'
-  /** Short status label shown next to the icon, e.g. "On track". */
-  label: string
-  message: string
+export type Hero = {
+  /** The month's key fact as a short figure: "$2,682 left", "$200 over". */
+  figure: string
+  tone: 'good' | 'critical' | 'neutral'
+  /** One plain-language sentence with the exact amounts. */
+  sentence: string
   /** Categories over their budget, worst first, as a sentence (or null). */
   detail: string | null
 }
@@ -137,37 +138,77 @@ export function overBudgetSentence(rows: CategoryRow[]): string | null {
 }
 
 /**
- * One plain-language read of the month. Null when there's nothing to say:
- * no budgets set, or a month that hasn't started.
+ * Amount for the giant figure. Whole dollars, rounded so the figure never
+ * flatters: money left is rounded down, overspend rounded up, spending to the
+ * nearest dollar. Under $10 the exact amount is shown, so $0.30 over never
+ * reads as "$0 over".
+ */
+export function heroAmount(cents: number, round: 'down' | 'up' | 'nearest'): string {
+  if (cents < 1000) return formatCents(cents)
+  const dollars =
+    round === 'down' ? Math.floor(cents / 100) : round === 'up' ? Math.ceil(cents / 100) : Math.round(cents / 100)
+  return formatCentsShort(dollars * 100)
+}
+
+/**
+ * The headline the dashboard opens with: a short figure plus one sentence.
  *
  * Deliberately no pace-based warnings or end-of-month projections: bills that
  * land on one day (rent on the 1st) make straight-line extrapolation cry wolf
  * every month. Everything stated here is exact arithmetic on what's happened.
  */
-export function buildInsight(
+export function buildHero(
   totals: BudgetTotals,
   rows: CategoryRow[],
   progress: MonthProgress,
   monthLabel: string,
-): Insight | null {
-  if (!totals.hasBudgets || progress.phase === 'future') return null
+): Hero {
+  const { remainingCents, spentCents, budgetCents, hasBudgets } = totals
+  const detail = hasBudgets ? overBudgetSentence(rows) : null
 
-  const detail = overBudgetSentence(rows)
-  const { remainingCents } = totals
+  // A month that hasn't started can still have expenses dated to it.
+  if (progress.phase === 'future') {
+    if (spentCents > 0) {
+      return {
+        figure: `${heroAmount(spentCents, 'nearest')} spent`,
+        tone: 'neutral',
+        sentence: hasBudgets
+          ? `${monthLabel} hasn't started yet. ${formatCents(spentCents)} is already dated to it, against a ${formatCents(budgetCents)} budget.`
+          : `${monthLabel} hasn't started yet. ${formatCents(spentCents)} is already dated to it.`,
+        detail,
+      }
+    }
+    return hasBudgets
+      ? { figure: `${heroAmount(budgetCents, 'nearest')} budgeted`, tone: 'neutral', sentence: `${monthLabel} hasn't started yet.`, detail: null }
+      : { figure: 'Not started', tone: 'neutral', sentence: `${monthLabel} hasn't started yet. You can set its budgets ahead of time.`, detail: null }
+  }
+
+  if (!hasBudgets) {
+    let sentence: string
+    if (progress.phase === 'past') {
+      sentence = spentCents === 0 ? `Nothing was spent in ${monthLabel}.` : `No budgets were set for ${monthLabel}.`
+    } else {
+      sentence =
+        spentCents === 0
+          ? `Nothing spent in ${monthLabel} yet. Set budgets to see how much is left.`
+          : 'Set budgets to see how much is left.'
+    }
+    return { figure: `${heroAmount(spentCents, 'nearest')} spent`, tone: 'neutral', sentence, detail: null }
+  }
 
   if (progress.phase === 'past') {
     if (remainingCents < 0) {
       return {
+        figure: `${heroAmount(-remainingCents, 'up')} over`,
         tone: 'critical',
-        label: 'Over budget',
-        message: `You finished ${monthLabel} ${formatCents(-remainingCents)} over budget.`,
+        sentence: `You finished ${monthLabel} ${formatCents(-remainingCents)} over budget.`,
         detail,
       }
     }
     return {
+      figure: remainingCents === 0 ? 'On budget' : `${heroAmount(remainingCents, 'down')} under`,
       tone: 'good',
-      label: 'Within budget',
-      message:
+      sentence:
         remainingCents === 0
           ? `You finished ${monthLabel} exactly on budget.`
           : `You finished ${monthLabel} ${formatCents(remainingCents)} under budget.`,
@@ -178,9 +219,9 @@ export function buildInsight(
   const daysLeft = progress.daysInMonth - progress.elapsedDays
   if (remainingCents < 0) {
     return {
+      figure: `${heroAmount(-remainingCents, 'up')} over`,
       tone: 'critical',
-      label: 'Over budget',
-      message:
+      sentence:
         daysLeft === 0
           ? `You're ${formatCents(-remainingCents)} over budget on the last day of the month.`
           : `You're ${formatCents(-remainingCents)} over budget with ${plural(daysLeft, 'day')} left.`,
@@ -188,71 +229,17 @@ export function buildInsight(
     }
   }
 
+  const figure = `${heroAmount(remainingCents, 'down')} left`
   if (daysLeft === 0) {
-    return {
-      tone: 'good',
-      label: 'Within budget',
-      message: `You have ${formatCents(remainingCents)} left on the last day of the month.`,
-      detail,
-    }
+    return { figure, tone: 'good', sentence: `You have ${formatCents(remainingCents)} left on the last day of the month.`, detail }
   }
-
   // Rounded down so the daily figure never overstates what's left.
   const perDay = Math.floor(remainingCents / daysLeft)
   return {
+    figure,
     tone: 'good',
-    label: 'Within budget',
-    message: `You have ${formatCents(remainingCents)} left for the remaining ${plural(daysLeft, 'day')}, about ${formatCents(perDay)} a day.`,
+    sentence: `You have ${formatCents(remainingCents)} left for the remaining ${plural(daysLeft, 'day')}, about ${formatCents(perDay)} a day.`,
     detail,
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Hero
-// ---------------------------------------------------------------------------
-
-export type Hero = {
-  /** The month's key fact as a short figure: "$2,682 left", "$200 over". */
-  figure: string
-  tone: 'good' | 'critical' | 'neutral'
-  sentence: string
-  detail: string | null
-}
-
-/**
- * The headline the dashboard opens with. Built from the same exact numbers as
- * the insight; when there is no insight (no budgets, or a future month) it
- * falls back to what was spent and what to do next.
- */
-export function buildHero(
-  insight: Insight | null,
-  totals: BudgetTotals,
-  progress: MonthProgress,
-  monthLabel: string,
-): Hero {
-  if (insight) {
-    const { remainingCents } = totals
-    let figure: string
-    if (remainingCents < 0) figure = `${formatCentsShort(-remainingCents)} over`
-    else if (progress.phase === 'past') figure = remainingCents === 0 ? 'On budget' : `${formatCentsShort(remainingCents)} under`
-    else figure = `${formatCentsShort(remainingCents)} left`
-    return { figure, tone: insight.tone, sentence: insight.message, detail: insight.detail }
-  }
-
-  if (progress.phase === 'future') {
-    return totals.hasBudgets
-      ? { figure: `${formatCentsShort(totals.budgetCents)} budgeted`, tone: 'neutral', sentence: `${monthLabel} hasn't started yet.`, detail: null }
-      : { figure: 'Not started', tone: 'neutral', sentence: `${monthLabel} hasn't started yet. You can set its budgets ahead of time.`, detail: null }
-  }
-
-  return {
-    figure: `${formatCentsShort(totals.spentCents)} spent`,
-    tone: 'neutral',
-    sentence:
-      totals.spentCents === 0
-        ? `Nothing spent in ${monthLabel} yet. Set budgets to see how much is left.`
-        : 'Set budgets to see how much is left.',
-    detail: null,
   }
 }
 
@@ -261,12 +248,13 @@ export function buildHero(
 // ---------------------------------------------------------------------------
 
 export type DashboardView = {
-  /** e.g. "October 2026" - the month the data belongs to. */
+  /** The month the data belongs to (1st of the month). */
+  month: ISODate
+  /** e.g. "October 2026". */
   label: string
   progress: MonthProgress
   totals: BudgetTotals
   rows: CategoryRow[]
-  insight: Insight | null
   hero: Hero
   pace: PaceSeries
 }
@@ -280,14 +268,13 @@ export function buildDashboardView(
   const totals = summarizeBudgets(data.summary)
   const rows = buildCategoryRows(data.summary)
   const label = formatMonth(data.month)
-  const insight = buildInsight(totals, rows, progress, label)
   return {
+    month: data.month,
     label,
     progress,
     totals,
     rows,
-    insight,
-    hero: buildHero(insight, totals, progress, label),
+    hero: buildHero(totals, rows, progress, label),
     pace: buildPaceSeries(data.daily, totals, progress),
   }
 }

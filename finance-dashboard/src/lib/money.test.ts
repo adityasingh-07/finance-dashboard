@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { centsToInput, formatCents, formatCentsShort, parseAmountToCents } from './money.ts'
+import { budgetToInput, centsToInput, formatCents, formatCentsShort, parseAmountToCents } from './money.ts'
 
 describe('parseAmountToCents', () => {
   it.each([
@@ -49,6 +49,20 @@ describe('formatCentsShort', () => {
     expect(formatCentsShort(123456)).toBe('$1,235')
     expect(formatCentsShort(123449)).toBe('$1,234')
     expect(formatCentsShort(0)).toBe('$0')
+  })
+})
+
+describe('budgetToInput', () => {
+  it('drops .00 for whole-dollar budgets and keeps real cents', () => {
+    expect(budgetToInput(130000)).toBe('1300')
+    expect(budgetToInput(0)).toBe('0')
+    expect(budgetToInput(130050)).toBe('1300.50')
+  })
+
+  it('round-trips through parseAmountToCents', () => {
+    for (const cents of [100, 130000, 130050, 5]) {
+      expect(parseAmountToCents(budgetToInput(cents), { allowZero: true })).toBe(cents)
+    }
   })
 })
 

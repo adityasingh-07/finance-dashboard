@@ -4,8 +4,8 @@ import {
   buildCategoryRows,
   buildDashboardView,
   buildHero,
-  buildInsight,
   buildPaceSeries,
+  heroAmount,
   monthProgress,
   overBudgetSentence,
   type CategoryRow,
@@ -128,83 +128,163 @@ describe('overBudgetSentence', () => {
   })
 })
 
-describe('buildInsight', () => {
-  const totals = (spent: number, limit: number) => summarizeBudgets([{ spent_cents: spent, limit_cents: limit }])
+describe('heroAmount', () => {
+  it('shows exact cents under $10, so small amounts never round to $0', () => {
+    expect(heroAmount(30, 'up')).toBe('$0.30')
+    expect(heroAmount(999, 'down')).toBe('$9.99')
+    expect(heroAmount(0, 'down')).toBe('$0.00')
+  })
+
+  it('rounds in the direction that never flatters', () => {
+    expect(heroAmount(268250, 'down')).toBe('$2,682')
+    expect(heroAmount(268201, 'up')).toBe('$2,683')
+    expect(heroAmount(268250, 'nearest')).toBe('$2,683')
+    expect(heroAmount(268249, 'nearest')).toBe('$2,682')
+  })
+})
+
+describe('buildHero', () => {
+  const totals = (spent: number, limit: number | null) => summarizeBudgets([{ spent_cents: spent, limit_cents: limit }])
   const current = (elapsedDays: number, daysInMonth = 30) =>
     ({ phase: 'current', daysInMonth, elapsedDays, fraction: elapsedDays / daysInMonth }) as const
+  const past = { phase: 'past', daysInMonth: 30, elapsedDays: 30, fraction: 1 } as const
+  const future = { phase: 'future', daysInMonth: 30, elapsedDays: 0, fraction: 0 } as const
+  const hero = (t: ReturnType<typeof totals>, p: Parameters<typeof buildHero>[2], rows: CategoryRow[] = []) =>
+    buildHero(t, rows, p, 'October 2026')
 
-  it('says nothing without budgets or for future months', () => {
-    expect(buildInsight(summarizeBudgets([{ spent_cents: 500, limit_cents: null }]), [], current(10), 'October 2026')).toBeNull()
-    expect(buildInsight(totals(0, 1000), [], { phase: 'future', daysInMonth: 30, elapsedDays: 0, fraction: 0 }, 'x')).toBeNull()
-  })
+  describe('current month with budgets', () => {
+    it('states what is left and the daily allowance', () => {
+      expect(hero(totals(231766, 500000), current(10))).toEqual({
+        figure: '$2,682 left',
+        tone: 'good',
+        sentence: 'You have $2,682.34 left for the remaining 20 days, about $134.11 a day.',
+        detail: null,
+      })
+    })
 
-  it('states what is left and the daily allowance when within budget', () => {
-    expect(buildInsight(totals(50000, 100000), [], current(15), 'October 2026')).toEqual({
-      tone: 'good',
-      label: 'Within budget',
-      message: 'You have $500.00 left for the remaining 15 days, about $33.33 a day.',
-      detail: null,
+    it('never rounds the figure up past what is left', () => {
+      // $2,682.50 left: rounding to nearest would claim $2,683.
+      expect(hero(totals(231750, 500000), current(10)).figure).toBe('$2,682 left')
+    })
+
+    it('does not cry wolf when a big bill lands early in the month', () => {
+      // Rent paid on day 1 is 42% of the budget; nothing is over.
+      const h = hero(totals(230000, 545000), current(1, 31))
+      expect(h.tone).toBe('good')
+      expect(h.sentence).toBe('You have $3,150.00 left for the remaining 30 days, about $105.00 a day.')
+    })
+
+    it('rounds the daily allowance down', () => {
+      // $100.00 over 3 days is $33.333...; never overstate it.
+      expect(hero(totals(0, 10000), current(27)).sentence).toBe(
+        'You have $100.00 left for the remaining 3 days, about $33.33 a day.',
+      )
+    })
+
+    it('uses singular "day" and handles the last day', () => {
+      expect(hero(totals(0, 10000), current(29)).sentence).toBe(
+        'You have $100.00 left for the remaining 1 day, about $100.00 a day.',
+      )
+      expect(hero(totals(0, 10000), current(30)).sentence).toBe('You have $100.00 left on the last day of the month.')
+    })
+
+    it('flags being over budget, rounding the figure up', () => {
+      expect(hero(totals(120000, 100000), current(20))).toMatchObject({
+        figure: '$200 over',
+        tone: 'critical',
+        sentence: "You're $200.00 over budget with 10 days left.",
+      })
+      expect(hero(totals(120001, 100000), current(20)).figure).toBe('$201 over')
+      expect(hero(totals(120000, 100000), current(29)).sentence).toBe("You're $200.00 over budget with 1 day left.")
+      expect(hero(totals(120000, 100000), current(30)).sentence).toBe(
+        "You're $200.00 over budget on the last day of the month.",
+      )
+    })
+
+    it('shows small overspends exactly instead of "$0 over"', () => {
+      expect(hero(totals(100030, 100000), current(20))).toMatchObject({ figure: '$0.30 over', tone: 'critical' })
+    })
+
+    it('names overspent categories even when the month as a whole is fine', () => {
+      expect(hero(totals(40000, 100000), current(15), [row('Dining Out', 3183)])).toMatchObject({
+        tone: 'good',
+        detail: 'Over budget in Dining Out (+$31.83).',
+      })
+    })
+
+    it('treats a $0 budget with no spending as within budget', () => {
+      expect(hero(totals(0, 0), current(10))).toMatchObject({
+        figure: '$0.00 left',
+        tone: 'good',
+        sentence: 'You have $0.00 left for the remaining 20 days, about $0.00 a day.',
+      })
     })
   })
 
-  it('does not cry wolf when a big bill lands early in the month', () => {
-    // Rent paid on day 1 is 42% of the budget; nothing is over.
-    const insight = buildInsight(totals(230000, 545000), [], current(1, 31), 'x')
-    expect(insight?.tone).toBe('good')
-    expect(insight?.message).toBe('You have $3,150.00 left for the remaining 30 days, about $105.00 a day.')
-  })
+  describe('finished months', () => {
+    it('says how the month finished', () => {
+      expect(hero(totals(90000, 100000), past)).toMatchObject({
+        figure: '$100 under',
+        tone: 'good',
+        sentence: 'You finished October 2026 $100.00 under budget.',
+      })
+      expect(hero(totals(100000, 100000), past)).toMatchObject({
+        figure: 'On budget',
+        sentence: 'You finished October 2026 exactly on budget.',
+      })
+      expect(hero(totals(130000, 100000), past)).toMatchObject({
+        figure: '$300 over',
+        tone: 'critical',
+        sentence: 'You finished October 2026 $300.00 over budget.',
+      })
+    })
 
-  it('rounds the daily allowance down', () => {
-    // $100.00 over 3 days is $33.333...; never overstate it.
-    expect(buildInsight(totals(0, 10000), [], current(27), 'x')?.message).toBe(
-      'You have $100.00 left for the remaining 3 days, about $33.33 a day.',
-    )
-  })
+    it('shows small amounts exactly', () => {
+      expect(hero(totals(99960, 100000), past).figure).toBe('$0.40 under')
+    })
 
-  it('uses singular "day" and handles the last day', () => {
-    expect(buildInsight(totals(0, 10000), [], current(29), 'x')?.message).toBe(
-      'You have $100.00 left for the remaining 1 day, about $100.00 a day.',
-    )
-    expect(buildInsight(totals(0, 10000), [], current(30), 'x')?.message).toBe(
-      'You have $100.00 left on the last day of the month.',
-    )
-  })
-
-  it('flags being over budget, with days left', () => {
-    expect(buildInsight(totals(120000, 100000), [], current(20), 'x')?.message).toBe(
-      "You're $200.00 over budget with 10 days left.",
-    )
-    expect(buildInsight(totals(120000, 100000), [], current(29), 'x')?.message).toBe(
-      "You're $200.00 over budget with 1 day left.",
-    )
-    expect(buildInsight(totals(120000, 100000), [], current(30), 'x')?.message).toBe(
-      "You're $200.00 over budget on the last day of the month.",
-    )
-  })
-
-  it('summarises finished months', () => {
-    const past = { phase: 'past', daysInMonth: 30, elapsedDays: 30, fraction: 1 } as const
-    expect(buildInsight(totals(90000, 100000), [], past, 'September 2026')?.message).toBe(
-      'You finished September 2026 $100.00 under budget.',
-    )
-    expect(buildInsight(totals(100000, 100000), [], past, 'September 2026')?.message).toBe(
-      'You finished September 2026 exactly on budget.',
-    )
-    expect(buildInsight(totals(110000, 100000), [], past, 'September 2026')).toMatchObject({
-      tone: 'critical',
-      message: 'You finished September 2026 $100.00 over budget.',
+    it('does not talk about the future for a finished month without budgets', () => {
+      expect(hero(totals(0, null), past)).toMatchObject({ figure: '$0.00 spent', sentence: 'Nothing was spent in October 2026.' })
+      expect(hero(totals(5000, null), past)).toMatchObject({ figure: '$50 spent', sentence: 'No budgets were set for October 2026.' })
     })
   })
 
-  it('names overspent categories even when the month as a whole is fine', () => {
-    const insight = buildInsight(totals(40000, 100000), [row('Dining Out', 3183)], current(15), 'x')
-    expect(insight).toMatchObject({ tone: 'good', detail: 'Over budget in Dining Out (+$31.83).' })
+  describe('current month without budgets', () => {
+    it('falls back to spending and suggests budgets', () => {
+      expect(hero(totals(4250, null), current(10))).toEqual({
+        figure: '$43 spent',
+        tone: 'neutral',
+        sentence: 'Set budgets to see how much is left.',
+        detail: null,
+      })
+      expect(hero(totals(0, null), current(10)).sentence).toBe(
+        'Nothing spent in October 2026 yet. Set budgets to see how much is left.',
+      )
+    })
   })
 
-  it('treats a $0 budget with no spending as within budget', () => {
-    expect(buildInsight(totals(0, 0), [], current(10), 'x')).toMatchObject({
-      tone: 'good',
-      message: 'You have $0.00 left for the remaining 20 days, about $0.00 a day.',
+  describe('months that have not started', () => {
+    it('says so, with or without budgets', () => {
+      expect(hero(totals(0, 545000), future)).toMatchObject({
+        figure: '$5,450 budgeted',
+        sentence: "October 2026 hasn't started yet.",
+      })
+      expect(hero(totals(0, null), future)).toMatchObject({
+        figure: 'Not started',
+        sentence: "October 2026 hasn't started yet. You can set its budgets ahead of time.",
+      })
+    })
+
+    it('acknowledges expenses already dated to it', () => {
+      expect(hero(totals(12000, null), future)).toEqual({
+        figure: '$120 spent',
+        tone: 'neutral',
+        sentence: "October 2026 hasn't started yet. $120.00 is already dated to it.",
+        detail: null,
+      })
+      expect(hero(totals(12000, 50000), future).sentence).toBe(
+        "October 2026 hasn't started yet. $120.00 is already dated to it, against a $500.00 budget.",
+      )
     })
   })
 })
@@ -219,52 +299,11 @@ describe('buildDashboardView', () => {
       },
       '2026-10-06',
     )
+    expect(view.month).toBe('2026-09-01')
     expect(view.label).toBe('September 2026')
     expect(view.progress.phase).toBe('past')
     expect(view.totals.remainingCents).toBe(10000)
-    expect(view.insight?.message).toBe('You finished September 2026 $100.00 under budget.')
+    expect(view.hero).toMatchObject({ figure: '$100 under', sentence: 'You finished September 2026 $100.00 under budget.' })
     expect(view.pace.pace).toEqual([100000])
-    expect(view.hero.figure).toBe('$100 under')
-  })
-})
-
-describe('buildHero', () => {
-  const current = { phase: 'current', daysInMonth: 30, elapsedDays: 10, fraction: 1 / 3 } as const
-  const past = { phase: 'past', daysInMonth: 30, elapsedDays: 30, fraction: 1 } as const
-  const future = { phase: 'future', daysInMonth: 30, elapsedDays: 0, fraction: 0 } as const
-  const budgeted = (spent: number, limit: number) => summarizeBudgets([{ spent_cents: spent, limit_cents: limit }])
-  const unbudgeted = (spent: number) => summarizeBudgets([{ spent_cents: spent, limit_cents: null }])
-  const hero = (t: ReturnType<typeof summarizeBudgets>, p: typeof current | typeof past | typeof future) =>
-    buildHero(buildInsight(t, [], p, 'October 2026'), t, p, 'October 2026')
-
-  it('leads with what is left, reusing the insight sentence', () => {
-    expect(hero(budgeted(231766, 500000), current)).toEqual({
-      figure: '$2,682 left',
-      tone: 'good',
-      sentence: 'You have $2,682.34 left for the remaining 20 days, about $134.11 a day.',
-      detail: null,
-    })
-  })
-
-  it('says how far over, and how a past month finished', () => {
-    expect(hero(budgeted(120000, 100000), current)).toMatchObject({ figure: '$200 over', tone: 'critical' })
-    expect(hero(budgeted(90000, 100000), past).figure).toBe('$100 under')
-    expect(hero(budgeted(100000, 100000), past).figure).toBe('On budget')
-    expect(hero(budgeted(130000, 100000), past).figure).toBe('$300 over')
-  })
-
-  it('falls back to spending without budgets', () => {
-    expect(hero(unbudgeted(4250), current)).toEqual({
-      figure: '$43 spent',
-      tone: 'neutral',
-      sentence: 'Set budgets to see how much is left.',
-      detail: null,
-    })
-    expect(hero(unbudgeted(0), current).sentence).toBe('Nothing spent in October 2026 yet. Set budgets to see how much is left.')
-  })
-
-  it('handles months that have not started', () => {
-    expect(hero(budgeted(0, 545000), future)).toMatchObject({ figure: '$5,450 budgeted', sentence: "October 2026 hasn't started yet." })
-    expect(hero(unbudgeted(0), future).figure).toBe('Not started')
   })
 })

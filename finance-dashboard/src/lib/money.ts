@@ -32,6 +32,11 @@ export function centsToInput(cents: number): string {
   return `${whole}.${frac}`
 }
 
+/** Budget field value: whole dollars when there are no cents (1300), else 1300.50. */
+export function budgetToInput(cents: number): string {
+  return cents % 100 === 0 ? String(cents / 100) : centsToInput(cents)
+}
+
 // Optional "$", digits with optional correct thousands separators, up to 2 decimals.
 const AMOUNT_PATTERN = /^\$?(\d{1,3}(?:,\d{3})+|\d*)(?:\.(\d{1,2}))?$/
 

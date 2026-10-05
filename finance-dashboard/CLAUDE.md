@@ -11,7 +11,7 @@ Personal finance dashboard: users log expenses, set monthly budgets per category
 1. Start Docker Desktop, then run `npm run db:start` and `npm run dev`. The demo login is in the Commands section below.
 2. Start Phase 4 (polish: responsive tweaks, Playwright e2e in the repo, deploy, README) using the roadmap in `docs/ARCHITECTURE.md`.
 
-Known follow-ups already planned for Phase 4: the main bundle is about 690 KB and still triggers Vite's chunk-size warning (Chart.js is already split out; route-level code-splitting is next), the "move expenses and delete" controls wrap awkwardly in the Categories table on desktop, and the three stat cards stack into tall cards on phones.
+Known follow-ups already planned for Phase 4: the main bundle is about 690 KB and still triggers Vite's chunk-size warning (Chart.js is already split out; route-level code-splitting is next), the "move expenses and delete" controls wrap awkwardly in the Categories table on desktop.
 
 Update or remove this section once these are done.
 
@@ -97,9 +97,9 @@ Charts read from SQL functions such as `monthly_category_summary(p_month)` and `
 - On sign-out, `AuthProvider` clears the whole query cache, so one user's data is never shown to the next.
 - Postgres errors reach the UI through `friendlyError(err, overrides)` in `src/lib/dbErrors.ts`, keyed by SQLSTATE (`23505` = duplicate, `23503` = still referenced). Constraint violations come back from PostgREST as HTTP 409, so seeing a 409 in the console for an expected conflict is normal.
 - Chart components take already-shaped data as props, and don't fetch or aggregate. The dashboard's numbers all come from `buildDashboardView()` in `src/lib/dashboard.ts` (pure, unit-tested), fed by `useDashboardData`, which fetches the summary and daily series together. Render from `data.month`, not the selected month: on a month change the previous data is kept (`keepPreviousData`) and shown dimmed.
-- Charts follow the dataviz rules: colours come from the `--chart-*` and `--status-*` tokens in `index.css` (light and dark values, contrast-checked against `--surface`), read on the canvas side via `useChartTheme()`. Text never uses a series colour. Every chart needs a table view (`ChartCard`'s `table` prop) and an `aria-label`. Never use a dual axis.
+- Charts follow the dataviz rules: colours come from the `--chart-*` tokens in `index.css` (one yellow-on-ink palette for both modes, contrast-checked against `--panel-bg`), read on the canvas side via `useChartTheme()`. Text never uses a series colour. Every chart needs a table view (`ChartCard`'s `table` prop) and an `aria-label`. Never use a dual axis.
 - Chart.js code lives only in the lazy-loaded `*Canvas.tsx` modules, each of which imports `components/charts/register.ts`. Register any new Chart.js controller or element there. Importing `chart.js` anywhere else pulls it into the main bundle.
-- Insights state exact facts only (`buildInsight`). Don't add straight-line projections or pace warnings, because bills paid on one day make them misfire.
+- The hero states exact facts only (`buildHero`, with figures rounded so they never flatter via `heroAmount`). Don't add straight-line projections or pace warnings, because bills paid on one day make them misfire.
 - Cents-to-display and date/month logic live in pure functions in `src/lib/` (`money.ts`, `dates.ts`), with tests next to them. Dates are `'YYYY-MM-DD'` strings in local time; never use `toISOString()` to get a date, because it converts to UTC.
 - `monthly_category_summary` returns `limit_cents`, `remaining_cents` and `pct_used` as NULL when there's no budget, but the generated types say `number`. Use `CategorySummary` from `useMonthlySummary.ts`, which corrects this.
 - DB types in `src/lib/database.types.ts` are generated (`npm run db:types`), never hand-edited. The output is unformatted; that's expected.

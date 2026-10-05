@@ -47,7 +47,7 @@ export function DashboardPage() {
       )}
 
       {view ? (
-        <DashboardHero view={view} monthParam={monthParam} dimmed={dimmed} />
+        <DashboardHero view={view} dimmed={dimmed} />
       ) : (
         dashboard.isPending && <ChartSkeleton height={180} />
       )}
@@ -76,8 +76,11 @@ export function DashboardPage() {
 }
 
 /** The month's key fact as a headline, with the supporting numbers beside it. */
-function DashboardHero({ view, monthParam, dimmed }: { view: DashboardView; monthParam: string; dimmed: boolean }) {
+function DashboardHero({ view, dimmed }: { view: DashboardView; dimmed: boolean }) {
   const { hero, totals } = view
+  // The data month, not the selected one: while the next month loads, this
+  // (dimmed) hero still describes, and links to, the month it shows.
+  const monthParam = toMonthParam(view.month)
   return (
     <section
       className={`hero hero-${hero.tone}${dimmed ? ' is-dimmed' : ''}`}

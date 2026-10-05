@@ -14,7 +14,7 @@ import { useSelectedMonth } from '../hooks/useSelectedMonth.ts'
 import { summarizeBudgets } from '../lib/budgets.ts'
 import { addMonths, formatMonth, type ISODate } from '../lib/dates.ts'
 import { friendlyError } from '../lib/dbErrors.ts'
-import { centsToInput, formatCents, parseAmountToCents } from '../lib/money.ts'
+import { budgetToInput, formatCents, parseAmountToCents } from '../lib/money.ts'
 
 export function BudgetsPage() {
   const [month, setMonth] = useSelectedMonth()
@@ -123,8 +123,9 @@ export function BudgetsPage() {
                   <th scope="col" className="num col-last">
                     Spent last month
                   </th>
-                  <th scope="col" className="num">
-                    Spent this month
+                  <th scope="col" className="num col-this">
+                    <span className="label-full">Spent this month</span>
+                    <span className="label-short">Spent</span>
                   </th>
                   <th scope="col" className="num">
                     Budget
@@ -148,7 +149,7 @@ export function BudgetsPage() {
                   <td>Total</td>
                   <td className="num col-last">{formatMaybe(totalLast)}</td>
                   <td
-                    className={`num${totals && totals.hasBudgets && totals.remainingCents < 0 ? ' over' : ''}`}
+                    className={`num col-this${totals && totals.hasBudgets && totals.remainingCents < 0 ? ' over' : ''}`}
                   >
                     {formatMaybe(totals?.spentCents)}
                   </td>
@@ -192,7 +193,7 @@ function BudgetRow({
   const [status, setStatus] = useState<SaveStatus>('idle')
   const [error, setError] = useState<string | null>(null)
 
-  const saved = budget ? centsToInput(budget.limit_cents) : ''
+  const saved = budget ? budgetToInput(budget.limit_cents) : ''
   const value = draft ?? saved
 
   function commit() {
@@ -239,7 +240,7 @@ function BudgetRow({
         </label>
       </td>
       <td className="num muted col-last">{formatMaybe(spentLast)}</td>
-      <td className={`num${over ? ' over' : ''}`}>{formatMaybe(spentThis)}</td>
+      <td className={`num col-this${over ? ' over' : ''}`}>{formatMaybe(spentThis)}</td>
       <td className="num col-budget">
         <div className="input-money">
           <input

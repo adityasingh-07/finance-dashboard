@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import type { Category } from '../hooks/useCategories.ts'
 import { useDeleteExpense, useUpdateExpense, type Expense } from '../hooks/useExpenses.ts'
-import { formatDay, MAX_DATE, MIN_DATE } from '../lib/dates.ts'
+import { formatDay, formatShortDay, MAX_DATE, MIN_DATE } from '../lib/dates.ts'
 import { friendlyError } from '../lib/dbErrors.ts'
 import { parseExpenseForm, type ExpenseFormErrors } from '../lib/expenseForm.ts'
 import { centsToInput, formatCents } from '../lib/money.ts'
@@ -21,7 +21,9 @@ export function ExpenseTable({ expenses, categoriesById, categories }: Props) {
       <table className="table expense-table">
         <thead>
           <tr>
-            <th scope="col">Date</th>
+            <th scope="col" className="col-date">
+              Date
+            </th>
             <th scope="col">Category</th>
             <th scope="col" className="col-note">
               Note
@@ -69,7 +71,7 @@ function ViewRow({
 }) {
   return (
     <tr>
-      <td className="cell-date">{formatDay(expense.spent_on)}</td>
+      <td className="cell-date col-date">{formatDay(expense.spent_on)}</td>
       <td>
         {category ? <CategoryLabel name={category.name} color={category.color} /> : '—'}
         {/* Narrow screens hide the Note column and show it here instead. */}
@@ -78,7 +80,11 @@ function ViewRow({
       <td className="col-note cell-note" title={expense.note ?? undefined}>
         {expense.note}
       </td>
-      <td className="num">{formatCents(expense.amount_cents)}</td>
+      <td className="num">
+        {formatCents(expense.amount_cents)}
+        {/* Narrow screens hide the Date column and show the date here instead. */}
+        <span className="date-inline">{formatShortDay(expense.spent_on)}</span>
+      </td>
       <td className="actions">
         <button
           type="button"
