@@ -1,22 +1,36 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router'
+import { CategoryChart } from '../components/charts/CategoryChart.tsx'
+import { ChartSkeleton } from '../components/charts/ChartCard.tsx'
+import { PaceChart } from '../components/charts/PaceChart.tsx'
 import { ExpenseForm } from '../components/ExpenseForm.tsx'
+import { InsightCallout } from '../components/InsightCallout.tsx'
 import { MonthPicker } from '../components/MonthPicker.tsx'
 import { useCategories } from '../hooks/useCategories.ts'
-import { useMonthlySummary } from '../hooks/useMonthlySummary.ts'
+import { useDashboardData } from '../hooks/useDashboardData.ts'
 import { useSelectedMonth } from '../hooks/useSelectedMonth.ts'
-import { summarizeBudgets } from '../lib/budgets.ts'
-import { toMonthParam } from '../lib/dates.ts'
+import { buildDashboardView, type DashboardView } from '../lib/dashboard.ts'
+import { todayISO, toMonthParam } from '../lib/dates.ts'
 import { friendlyError } from '../lib/dbErrors.ts'
 import { formatCents } from '../lib/money.ts'
 
-// Summary numbers and quick-add for now; charts arrive in Phase 3.
 export function DashboardPage() {
   const [month, setMonth] = useSelectedMonth()
   const categories = useCategories()
-  const summary = useMonthlySummary(month)
+  const dashboard = useDashboardData(month)
+  const today = todayISO()
 
-  const totals = summary.data ? summarizeBudgets(summary.data) : null
+  // Everything below derives from dashboard.data.month - the month the data
+  // belongs to - so while a new month loads, the previous render stays
+  // consistent (and dimmed) instead of mixing two months.
+  const view = useMemo(
+    () => (dashboard.data ? buildDashboardView(dashboard.data, today) : null),
+    [dashboard.data, today],
+  )
+
+  const dimmed = dashboard.isPlaceholderData
   const monthParam = toMonthParam(month)
+  const totals = view?.totals ?? null
   const over = totals !== null && totals.hasBudgets && totals.remainingCents < 0
 
   return (
@@ -26,16 +40,18 @@ export function DashboardPage() {
         <MonthPicker month={month} onChange={setMonth} />
       </div>
 
-      {summary.isError && (
+      {dashboard.isError && (
         <div className="form-error" role="alert">
-          Couldn't load this month's totals: {friendlyError(summary.error)}{' '}
-          <button type="button" className="link-button" onClick={() => void summary.refetch()}>
+          Couldn't load this month's numbers: {friendlyError(dashboard.error)}{' '}
+          <button type="button" className="link-button" onClick={() => void dashboard.refetch()}>
             Try again
           </button>
         </div>
       )}
 
-      <section className="stat-row" aria-label="Month summary">
+      {view?.insight && <InsightCallout insight={view.insight} dimmed={dimmed} />}
+
+      <section className={`stat-row${dimmed ? ' is-dimmed' : ''}`} aria-label="Month summary">
         <div className="card">
           <div className="stat-label">Spent</div>
           <div className="stat-value">{totals ? formatCents(totals.spentCents) : '—'}</div>
@@ -88,6 +104,61 @@ export function DashboardPage() {
           </p>
         )}
       </section>
+
+      <DashboardCharts view={view} dimmed={dimmed} loading={dashboard.isPending} />
     </>
+  )
+}
+
+function DashboardCharts({
+  view,
+  dimmed,
+  loading,
+}: {
+  view: DashboardView | null
+  dimmed: boolean
+  loading: boolean
+}) {
+  if (loading) {
+    // First load only; later month changes keep the previous render dimmed.
+    return (
+      <div className="charts" aria-busy="true">
+        <div className="card">
+          <ChartSkeleton height={300} />
+        </div>
+        <div className="card">
+          <ChartSkeleton height={260} />
+        </div>
+      </div>
+    )
+  }
+  if (!view) return null
+
+  const { totals, rows, pace, label, progress } = view
+
+  if (totals.spentCents === 0 && !totals.hasBudgets) {
+    return (
+      <section className="card empty-state" aria-label="Charts">
+        <strong>
+          {progress.phase === 'future' ? `${label} hasn't started yet` : `No expenses in ${label} yet`}
+        </strong>
+        {progress.phase === 'future'
+          ? 'Set budgets for it ahead of time, or pick another month.'
+          : 'Add your first one above and your charts will appear here.'}
+      </section>
+    )
+  }
+
+  return (
+    <div className="charts">
+      <PaceChart
+        series={pace}
+        budgetCents={totals.budgetCents}
+        unbudgetedSpentCents={totals.unbudgetedSpentCents}
+        monthLabel={label}
+        dimmed={dimmed}
+      />
+      {rows.length > 0 && <CategoryChart rows={rows} monthLabel={label} dimmed={dimmed} />}
+    </div>
   )
 }

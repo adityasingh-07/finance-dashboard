@@ -25,6 +25,20 @@
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
 
+  /* Charts. Values from the dataviz reference palette; contrast measured
+     against --surface. Marks clear 3:1; the budget track is a lighter step
+     of the same ramp (meter track) and never carries meaning alone. */
+  --chart-series: #2a78d6;
+  --chart-track: #9ec5f4;
+  --chart-critical: #d03b3b;
+  --chart-pace: #898781;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+
+  /* Status: always paired with an icon and a text label. */
+  --status-good: #0ca30c;
+  --status-critical: #d03b3b;
+
   color-scheme: light;
 }
 
@@ -45,6 +59,13 @@
     --success-bg: #0f2417;
     --focus: #1e40af;
     --shadow: none;
+
+    --chart-series: #3987e5;
+    --chart-track: #184f95;
+    --chart-critical: #d03b3b;
+    --chart-pace: #898781;
+    --chart-grid: #2c2c2a;
+    --chart-axis: #383835;
 
     color-scheme: dark;
   }
@@ -655,10 +676,10 @@ input[type='color'] {
   color: var(--text-muted);
 }
 
+/* Proportional figures: tabular-nums makes large standalone numbers look loose. */
 .stat-value {
   font-size: 1.5rem;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 
 .stat-note {
@@ -703,6 +724,143 @@ a.stat-note {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------------------
+   Dashboard: insight, charts, loading
+   --------------------------------------------------------------------------- */
+
+/* Holding the previous render while a new month loads: no layout jump. */
+.is-dimmed {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.insight p {
+  margin: 0;
+}
+
+.insight-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  margin-top: 1px;
+}
+
+.insight-good .insight-icon {
+  color: var(--status-good);
+}
+
+.insight-critical .insight-icon {
+  color: var(--status-critical);
+}
+
+.insight-detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.charts {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chart-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.chart-description {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  max-width: 60ch;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-bottom: 8px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Keys mirror the mark: a stroke for lines, a small rect for bars. The key's
+   colour comes from the inline `color`; the label stays in text colour. */
+.legend-key-line,
+.legend-key-dashed {
+  width: 18px;
+  border-top: 2px solid currentColor;
+}
+
+.legend-key-dashed {
+  border-top-style: dashed;
+}
+
+.legend-key-rect {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.chart-canvas {
+  position: relative;
+  width: 100%;
+}
+
+.chart-table {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--surface-muted) 25%, var(--border) 50%, var(--surface-muted) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+
+  .is-dimmed {
+    transition: none;
+  }
 }
 
 /* ---------------------------------------------------------------------------

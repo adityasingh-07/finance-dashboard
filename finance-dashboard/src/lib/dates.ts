@@ -7,6 +7,7 @@ export type ISODate = string
 const LOCALE = 'en-AU'
 
 const monthFormat = new Intl.DateTimeFormat(LOCALE, { month: 'long', year: 'numeric' })
+const shortDayFormat = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short' })
 const dayFormat = new Intl.DateTimeFormat(LOCALE, {
   weekday: 'short',
   day: 'numeric',
@@ -51,6 +52,18 @@ export function monthStart(date: ISODate): ISODate {
 export function addMonths(date: ISODate, n: number): ISODate {
   const [y, m] = parts(date)
   return toISODate(localDate(y, m - 1 + n, 1))
+}
+
+/** Number of days in the month containing `date`. */
+export function daysInMonth(date: ISODate): number {
+  const [y, m] = parts(date)
+  return localDate(y, m, 0).getDate() // day 0 of next month = last day of this one
+}
+
+/** '2026-10-05' -> '5 Oct' (chart axis labels). */
+export function formatShortDay(date: ISODate): string {
+  const [y, m, d] = parts(date)
+  return shortDayFormat.format(localDate(y, m - 1, d))
 }
 
 /** [start, end) bounds of the month containing `date`, for range queries. */

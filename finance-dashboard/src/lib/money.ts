@@ -14,6 +14,17 @@ export function formatCents(cents: number): string {
   return currencyFormat.format(cents / 100)
 }
 
+const wholeDollarFormat = new Intl.NumberFormat(LOCALE, {
+  style: 'currency',
+  currency: CURRENCY,
+  maximumFractionDigits: 0,
+})
+
+/** 123456 -> "$1,235" (rounded to whole dollars, for chart labels and axes). */
+export function formatCentsShort(cents: number): string {
+  return wholeDollarFormat.format(Math.round(cents / 100))
+}
+
 /** 1250 -> "12.50", for pre-filling inputs. */
 export function centsToInput(cents: number): string {
   const whole = Math.trunc(cents / 100)

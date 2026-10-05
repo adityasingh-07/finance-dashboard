@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   addMonths,
+  daysInMonth,
   defaultExpenseDate,
+  formatShortDay,
   formatDay,
   formatMonth,
   fromMonthParam,
@@ -50,8 +52,24 @@ describe('month helpers', () => {
     expect(formatMonth('2026-10-05')).toBe('October 2026')
   })
 
+  it('formats a short axis label', () => {
+    expect(formatShortDay('2026-10-05')).toBe('5 Oct')
+  })
+
   it('formats a day label', () => {
     expect(formatDay('2026-10-05')).toBe('Mon, 5 Oct')
+  })
+})
+
+describe('daysInMonth', () => {
+  it.each([
+    ['2026-01-15', 31],
+    ['2026-02-01', 28],
+    ['2024-02-01', 29],
+    ['2026-04-30', 30],
+    ['2026-12-01', 31],
+  ])('%s has %i days', (date, days) => {
+    expect(daysInMonth(date)).toBe(days)
   })
 })
 

@@ -70,7 +70,7 @@ isOneToOne: false
                            },
 "daily_spend":
 { Args: { "p_month": string }; Returns: {
-              "cumulative_cents": number,"spent_cents": number,"spent_on": string
+              "budgeted_cumulative_cents": number,"budgeted_spent_cents": number,"cumulative_cents": number,"spent_cents": number,"spent_on": string
             }[]
                            },
 "delete_category":

@@ -112,7 +112,7 @@ flowchart TB
             C2["ExpenseTable<br/>(filter, edit, delete)"]
             C3["BudgetEditor<br/>(grid per category)"]
             C4["SummaryCards<br/>(spent / budget / remaining)"]
-            C5["Charts<br/>CategoryDoughnut · BudgetVsActualBar · PaceLine"]
+            C5["Charts<br/>PaceChart · CategoryChart · InsightCallout"]
             C6["MonthPicker"]
         end
 
@@ -207,7 +207,7 @@ Charts read from **views / RPC functions** rather than raw tables:
 
 | Object | Returns | Feeds |
 |---|---|---|
-| `monthly_category_summary(p_month date)` | category, color, spent_cents, limit_cents, remaining_cents, pct_used | SummaryCards, Doughnut, Budget-vs-Actual bar |
+| `monthly_category_summary(p_month date)` | category, color, spent_cents, limit_cents, remaining_cents, pct_used | Budgets page (spent per category) |
 | `daily_spend(p_month date)` | day, spent_cents, cumulative_cents | Pace line chart |
 | `monthly_totals(p_from, p_to)` (stretch) | month, spent_cents | Month-over-month trend |
 
@@ -276,7 +276,7 @@ flowchart LR
     A[User input<br/>forms / CSV] -->|validate| B[(expenses<br/>budgets<br/>categories)]
     B -->|SQL aggregation<br/>views + RPC| C[Summaries<br/>per month / category / day]
     C -->|typed hooks| D[Chart-ready datasets]
-    D --> E[Doughnut · Bar · Line]
+    D --> E[Pace line · Category bars]
     C --> F[Insights<br/>'82% of Food budget used,<br/>11 days left']
 ```
 
@@ -286,10 +286,14 @@ flowchart LR
 
 | Chart | Question it answers | Notes |
 |---|---|---|
-| **Doughnut** — spend by category | "Where did my money go this month?" | Use category colours. Group anything under 3% into "Other". Show the total in the centre. |
-| **Horizontal bar** — budget vs actual | "Which categories am I over or under?" | Budget as a muted bar, actual on top. Red only when over. Sort by % used. |
-| **Line** — cumulative spend vs pace | "Am I on track to stay within budget?" | Straight line from 0 to the total budget across the month. If actual is above the line, you're spending too fast. |
+| **Line** — cumulative spend vs pace | "How is my spending tracking against my budget?" | Running total of spending in *budgeted* categories (same rule as the summary cards) against a dashed straight line from 0 to the total budget. Without budgets it shows all spending, single series. Crosshair tooltip, end labels. |
+| **Horizontal bar** — where the money went | "Where did my money go, and which categories are over?" | One hue for every bar (the categories are nominal, so colour isn't spent on identity), sorted by spend. Each budget is a lighter track behind its bar (meter form). Over-budget bars switch to the reserved critical colour and get an "over by" label. Values at the bar tips; no value axis. |
+| **Insight** — one sentence | "So what?" | Exact arithmetic only: budget left and a daily allowance, or how far over. No straight-line projections, because bills that land on one day (rent on the 1st) would trigger false alarms every month. |
 | *(stretch)* Stacked bar — last 6 months | "Is my spending trending up?" | |
+
+**Changed from the original plan:** a doughnut for spend by category was dropped. With 10 categories in user-chosen colours, no palette check can guarantee the slices are distinguishable, and the dataviz guidelines cap doughnuts at about 6 segments. Spend by category and budget vs actual were merged into the single bar chart above.
+
+Every chart has a table view (the accessible equivalent), a text alternative on the canvas, and dark-mode colours of its own. Chart.js loads lazily, so it only downloads when a chart renders.
 
 ---
 
@@ -306,7 +310,8 @@ finance-dashboard/
 │  │  ├─ 20261006000003_default_categories.sql
 │  │  ├─ 20261006000004_summary_functions.sql
 │  │  ├─ 20261007000001_delete_category.sql
-│  │  └─ 20261007000002_copy_budgets.sql
+│  │  ├─ 20261007000002_copy_budgets.sql
+│  │  └─ 20261008000001_daily_spend_budgeted.sql
 │  ├─ tests/               # pgTAP: constraints, RLS isolation, aggregates, RPCs
 │  └─ seed.sql             # demo user + 3 months of data (dates relative to today)
 ├─ src/
@@ -355,9 +360,9 @@ finance-dashboard/
 - [x] Budgets page: a grid of categories × the selected month's limits, saved via upsert (plus copy from last month).
 
 ### Phase 3: Dashboard + charts
-- [ ] MonthPicker plus summary cards.
-- [ ] Doughnut, budget-vs-actual bar, pace line.
-- [ ] Empty states ("No expenses yet — add your first one") and loading skeletons.
+- [x] MonthPicker plus summary cards.
+- [x] Pace line and spend-by-category bars (doughnut dropped, see section 7), plus a one-sentence insight.
+- [x] Empty states ("No expenses yet — add your first one") and loading skeletons (first load only; month changes dim the previous render).
 
 ### Phase 4: Polish (the "usable UI" proof)
 - [ ] Responsive layout down to 360px, plus dark mode.
