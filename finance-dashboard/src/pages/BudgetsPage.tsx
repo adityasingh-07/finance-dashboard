@@ -247,7 +247,7 @@ function BudgetRow({
             type="text"
             inputMode="decimal"
             autoComplete="off"
-            placeholder="No budget"
+            placeholder="None"
             value={value}
             // Locked while a save is in flight so a second edit can't race it
             // and leave the database holding whichever request landed last.

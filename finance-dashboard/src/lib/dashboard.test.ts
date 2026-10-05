@@ -3,6 +3,7 @@ import { summarizeBudgets } from './budgets.ts'
 import {
   buildCategoryRows,
   buildDashboardView,
+  buildHero,
   buildInsight,
   buildPaceSeries,
   monthProgress,
@@ -223,5 +224,47 @@ describe('buildDashboardView', () => {
     expect(view.totals.remainingCents).toBe(10000)
     expect(view.insight?.message).toBe('You finished September 2026 $100.00 under budget.')
     expect(view.pace.pace).toEqual([100000])
+    expect(view.hero.figure).toBe('$100 under')
+  })
+})
+
+describe('buildHero', () => {
+  const current = { phase: 'current', daysInMonth: 30, elapsedDays: 10, fraction: 1 / 3 } as const
+  const past = { phase: 'past', daysInMonth: 30, elapsedDays: 30, fraction: 1 } as const
+  const future = { phase: 'future', daysInMonth: 30, elapsedDays: 0, fraction: 0 } as const
+  const budgeted = (spent: number, limit: number) => summarizeBudgets([{ spent_cents: spent, limit_cents: limit }])
+  const unbudgeted = (spent: number) => summarizeBudgets([{ spent_cents: spent, limit_cents: null }])
+  const hero = (t: ReturnType<typeof summarizeBudgets>, p: typeof current | typeof past | typeof future) =>
+    buildHero(buildInsight(t, [], p, 'October 2026'), t, p, 'October 2026')
+
+  it('leads with what is left, reusing the insight sentence', () => {
+    expect(hero(budgeted(231766, 500000), current)).toEqual({
+      figure: '$2,682 left',
+      tone: 'good',
+      sentence: 'You have $2,682.34 left for the remaining 20 days, about $134.11 a day.',
+      detail: null,
+    })
+  })
+
+  it('says how far over, and how a past month finished', () => {
+    expect(hero(budgeted(120000, 100000), current)).toMatchObject({ figure: '$200 over', tone: 'critical' })
+    expect(hero(budgeted(90000, 100000), past).figure).toBe('$100 under')
+    expect(hero(budgeted(100000, 100000), past).figure).toBe('On budget')
+    expect(hero(budgeted(130000, 100000), past).figure).toBe('$300 over')
+  })
+
+  it('falls back to spending without budgets', () => {
+    expect(hero(unbudgeted(4250), current)).toEqual({
+      figure: '$43 spent',
+      tone: 'neutral',
+      sentence: 'Set budgets to see how much is left.',
+      detail: null,
+    })
+    expect(hero(unbudgeted(0), current).sentence).toBe('Nothing spent in October 2026 yet. Set budgets to see how much is left.')
+  })
+
+  it('handles months that have not started', () => {
+    expect(hero(budgeted(0, 545000), future)).toMatchObject({ figure: '$5,450 budgeted', sentence: "October 2026 hasn't started yet." })
+    expect(hero(unbudgeted(0), future).figure).toBe('Not started')
   })
 })

@@ -4,7 +4,7 @@
 
 import { summarizeBudgets, type BudgetTotals } from './budgets.ts'
 import { daysInMonth, formatMonth, monthStart, type ISODate } from './dates.ts'
-import { formatCents } from './money.ts'
+import { formatCents, formatCentsShort } from './money.ts'
 
 // ---------------------------------------------------------------------------
 // Month progress
@@ -208,6 +208,55 @@ export function buildInsight(
 }
 
 // ---------------------------------------------------------------------------
+// Hero
+// ---------------------------------------------------------------------------
+
+export type Hero = {
+  /** The month's key fact as a short figure: "$2,682 left", "$200 over". */
+  figure: string
+  tone: 'good' | 'critical' | 'neutral'
+  sentence: string
+  detail: string | null
+}
+
+/**
+ * The headline the dashboard opens with. Built from the same exact numbers as
+ * the insight; when there is no insight (no budgets, or a future month) it
+ * falls back to what was spent and what to do next.
+ */
+export function buildHero(
+  insight: Insight | null,
+  totals: BudgetTotals,
+  progress: MonthProgress,
+  monthLabel: string,
+): Hero {
+  if (insight) {
+    const { remainingCents } = totals
+    let figure: string
+    if (remainingCents < 0) figure = `${formatCentsShort(-remainingCents)} over`
+    else if (progress.phase === 'past') figure = remainingCents === 0 ? 'On budget' : `${formatCentsShort(remainingCents)} under`
+    else figure = `${formatCentsShort(remainingCents)} left`
+    return { figure, tone: insight.tone, sentence: insight.message, detail: insight.detail }
+  }
+
+  if (progress.phase === 'future') {
+    return totals.hasBudgets
+      ? { figure: `${formatCentsShort(totals.budgetCents)} budgeted`, tone: 'neutral', sentence: `${monthLabel} hasn't started yet.`, detail: null }
+      : { figure: 'Not started', tone: 'neutral', sentence: `${monthLabel} hasn't started yet. You can set its budgets ahead of time.`, detail: null }
+  }
+
+  return {
+    figure: `${formatCentsShort(totals.spentCents)} spent`,
+    tone: 'neutral',
+    sentence:
+      totals.spentCents === 0
+        ? `Nothing spent in ${monthLabel} yet. Set budgets to see how much is left.`
+        : 'Set budgets to see how much is left.',
+    detail: null,
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Whole dashboard
 // ---------------------------------------------------------------------------
 
@@ -218,6 +267,7 @@ export type DashboardView = {
   totals: BudgetTotals
   rows: CategoryRow[]
   insight: Insight | null
+  hero: Hero
   pace: PaceSeries
 }
 
@@ -230,12 +280,14 @@ export function buildDashboardView(
   const totals = summarizeBudgets(data.summary)
   const rows = buildCategoryRows(data.summary)
   const label = formatMonth(data.month)
+  const insight = buildInsight(totals, rows, progress, label)
   return {
     label,
     progress,
     totals,
     rows,
-    insight: buildInsight(totals, rows, progress, label),
+    insight,
+    hero: buildHero(insight, totals, progress, label),
     pace: buildPaceSeries(data.daily, totals, progress),
   }
 }

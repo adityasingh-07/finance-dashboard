@@ -51,11 +51,16 @@ export function LoginPage() {
 
   return (
     <main className="auth-page">
-      <div className="card auth-card">
-        <h1>Finance Dashboard</h1>
-        <p className="muted">
-          {isSignIn ? 'Sign in to track your spending.' : 'Create an account to get started.'}
+      <div className="auth-intro">
+        <span className="app-title">Finance</span>
+        <h1 className="auth-headline">Know where your money goes.</h1>
+        <p className="auth-lede">
+          Log an expense in seconds, set a budget for each category, and see where the month went.
         </p>
+      </div>
+
+      <div className="card auth-card">
+        <h2>{isSignIn ? 'Sign in' : 'Create an account'}</h2>
 
         <form onSubmit={onSubmit} className="stack">
           <label className="field">

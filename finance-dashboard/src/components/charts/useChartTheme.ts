@@ -23,9 +23,10 @@ function readTheme(): ChartTheme {
     pace: token('--chart-pace'),
     grid: token('--chart-grid'),
     axis: token('--chart-axis'),
-    text: token('--text'),
-    textMuted: token('--text-muted'),
-    surface: token('--surface'),
+    // Charts sit on ink panels in both modes, so they use panel text colours.
+    text: token('--chart-text'),
+    textMuted: token('--chart-text-muted'),
+    surface: token('--chart-surface'),
   }
 }
 

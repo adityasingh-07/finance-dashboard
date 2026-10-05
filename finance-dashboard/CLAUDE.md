@@ -104,6 +104,15 @@ Charts read from SQL functions such as `monthly_category_summary(p_month)` and `
 - `monthly_category_summary` returns `limit_cents`, `remaining_cents` and `pct_used` as NULL when there's no budget, but the generated types say `number`. Use `CategorySummary` from `useMonthlySummary.ts`, which corrects this.
 - DB types in `src/lib/database.types.ts` are generated (`npm run db:types`), never hand-edited. The output is unformatted; that's expected.
 
+### Visual design
+
+The UI follows cloudstudio.es's visual language, as the user asked: butter-yellow page (`#fff48d`), ink (`#0e0e0c`), cream cards with 2px ink outlines, pill buttons, ink panels holding the charts, Bricolage Grotesque set big and tight for headlines, and Geist Mono only for data (amounts, dates). Fonts are self-hosted via `@fontsource`. It borrows the look only: don't copy cloudstudio's logo, mascot or copy.
+
+- All colours are tokens at the top of `src/index.css`, with a dark-mode block. Every text/background pair was contrast-checked (>= 4.5:1 for text), so pick an existing token rather than a new hex.
+- `.chart-card` re-points `--surface`, `--text`, `--line` and friends at panel values. Anything placed inside a chart card (tables, buttons) automatically uses panel colours, so don't hard-code colours inside it.
+- Charts use the `--chart-*` tokens, the same yellow-on-ink palette in both modes. Only the panel colour changes in dark mode.
+- The dashboard opens with `buildHero()` (`src/lib/dashboard.ts`): the month's key fact as a giant figure plus the insight sentence. Keep that the one bold element; everything else stays quiet.
+
 ### TypeScript settings that affect how you write code
 
 - `verbatimModuleSyntax`: type-only imports must use `import type`.
