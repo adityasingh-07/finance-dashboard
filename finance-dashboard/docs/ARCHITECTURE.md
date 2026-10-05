@@ -299,12 +299,14 @@ flowchart LR
 finance-dashboard/
 ├─ docs/ARCHITECTURE.md
 ├─ supabase/
-│  ├─ migrations/          # timestamped SQL, replaces the single schema.sql
-│  │  ├─ 0001_categories.sql
-│  │  ├─ 0002_expenses_budgets.sql
-│  │  ├─ 0003_rls.sql
-│  │  └─ 0004_summary_functions.sql
-│  └─ seed.sql             # demo data for local dev & screenshots
+│  ├─ config.toml          # local stack config (supabase init)
+│  ├─ migrations/          # each table ships with its RLS policies
+│  │  ├─ 20261006000001_categories.sql
+│  │  ├─ 20261006000002_expenses_budgets.sql
+│  │  ├─ 20261006000003_default_categories.sql
+│  │  └─ 20261006000004_summary_functions.sql
+│  ├─ tests/rls_test.sql   # pgTAP: constraints, RLS isolation, aggregates
+│  └─ seed.sql             # demo user + 3 months of data (dates relative to today)
 ├─ src/
 │  ├─ lib/
 │  │  ├─ supabaseClient.ts
@@ -331,13 +333,14 @@ finance-dashboard/
 - [ ] Set up `supabaseClient.ts` and `supabase gen types typescript` (as an npm script).
 
 ### Phase 1: Data model (the core of the resume pitch)
-- [ ] Add `unique (id, user_id)` to `categories`. Default `user_id` to `auth.uid()`.
-- [ ] Create `expenses` and `budgets` with constraints, composite FKs and indexes.
-- [ ] Enable RLS with select/insert/update/delete policies on all three tables.
-- [ ] Add a trigger that seeds default categories when a new user signs up.
-- [ ] Create the `monthly_category_summary` and `daily_spend` functions.
-- [ ] Add `seed.sql` with roughly 3 months of realistic demo data.
-- [ ] **Verify RLS:** two test users, and confirm that user B can't read or write user A's rows.
+- [x] Add `unique (id, user_id)` to `categories`. Default `user_id` to `auth.uid()`.
+- [x] Create `expenses` and `budgets` with constraints, composite FKs and indexes.
+- [x] Enable RLS with select/insert/update/delete policies on all three tables.
+- [x] Add a trigger that seeds default categories when a new user signs up.
+- [x] Create the `monthly_category_summary` and `daily_spend` functions.
+- [x] Add `seed.sql` with roughly 3 months of realistic demo data.
+- [x] **Verify RLS:** two test users, and confirm that user B can't read or write user A's rows (`supabase test db`).
+- [ ] Apply to the hosted Supabase project (`supabase link` + `supabase db push`).
 
 ### Phase 2: Auth + CRUD
 - [ ] AuthProvider, login page, protected routes.
