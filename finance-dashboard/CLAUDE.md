@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Personal finance dashboard: users log expenses, set monthly budgets per category, and see spending charts. React 19 + TypeScript (Vite), Supabase (Postgres/Auth/RLS), Chart.js. The design, diagrams and phased roadmap are in `docs/ARCHITECTURE.md`. Check its roadmap checkboxes to see what's built, and tick them when you finish an item.
 
-**Current state:** the database layer (Phase 1) is done and tested. The front end is still an empty scaffold: `src/App.tsx` is a placeholder, and Supabase, Chart.js, TanStack Query and the router aren't installed yet.
+**Current state:** the database layer (Phase 1) is done and tested. Front-end dependencies are installed and `src/lib/supabaseClient.ts` is wired to generated types, but there's no UI yet: `src/App.tsx` is a placeholder, and no router or QueryClient provider is set up.
 
 ## Repo layout quirk
 
@@ -20,17 +20,18 @@ npm run lint       # oxlint
 
 There's no JS test runner yet (Vitest is planned).
 
-The Supabase CLI isn't installed globally or in package.json, so use `npx -y supabase@latest`. It needs Docker Desktop running.
+The Supabase CLI is a pinned dev dependency (use `npx supabase ...` for anything without a script). It needs Docker Desktop running.
 
 ```sh
-# Start a minimal local stack (db + auth only); applies migrations + seed on first start
-npx -y supabase@latest start -x studio,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta,mailpit,kong,postgrest
-
-npx -y supabase@latest db reset                               # re-apply all migrations + seed.sql
-npx -y supabase@latest test db                                # all pgTAP tests in supabase/tests/
-npx -y supabase@latest test db supabase/tests/rls_test.sql    # a single test file
-npx -y supabase@latest stop
+npm run db:start    # local stack: db, auth, API gateway (127.0.0.1:54321); prints URL + keys
+npm run db:reset    # re-apply all migrations + seed.sql
+npm run db:test     # all pgTAP tests in supabase/tests/
+npm run db:test -- supabase/tests/rls_test.sql   # a single test file
+npm run db:types    # regenerate src/lib/database.types.ts; run after every schema change
+npm run db:stop
 ```
+
+The app reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from `.env.local`; `.env.example` is the template. The local stack's publishable key is a fixed demo value printed by `db:start`.
 
 There's no local `psql`, so run SQL through the DB container. To test as a real user under RLS, switch role inside a transaction:
 
@@ -74,7 +75,7 @@ Charts read from SQL functions such as `monthly_category_summary(p_month)` and `
 - Only query hooks (TanStack Query) in `src/hooks/` call Supabase. Components and pages never import the Supabase client directly.
 - Chart components take already-shaped data as props, and don't fetch or aggregate.
 - Cents-to-display and date/month logic live in pure functions in `src/lib/` (`money.ts`, `dates.ts`).
-- DB types are generated with `supabase gen types typescript`, not hand-written.
+- DB types in `src/lib/database.types.ts` are generated (`npm run db:types`), never hand-edited. The output is unformatted; that's expected.
 
 ### TypeScript settings that affect how you write code
 

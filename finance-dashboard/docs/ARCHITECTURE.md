@@ -318,7 +318,8 @@ finance-dashboard/
 │  ├─ components/          # ExpenseForm, ExpenseTable, MonthPicker, charts/...
 │  ├─ pages/               # Dashboard, Expenses, Budgets, Categories, Login
 │  └─ App.tsx              # router + providers
-└─ .env.local              # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (gitignored)
+├─ .env.example            # template, committed
+└─ .env.local              # VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY (gitignored)
 ```
 
 ---
@@ -326,11 +327,12 @@ finance-dashboard/
 ## 9. Roadmap
 
 ### Phase 0: Foundations
-- [ ] Create the Supabase project. Install the Supabase CLI and run `supabase init` / `supabase link`.
-- [ ] Move `schema.sql` into `supabase/migrations/`.
-- [ ] Install deps: `@supabase/supabase-js @tanstack/react-query react-router chart.js react-chartjs-2 zod`.
-- [ ] Add `.env.local` and make sure `.env*.local` is gitignored.
-- [ ] Set up `supabaseClient.ts` and `supabase gen types typescript` (as an npm script).
+- [x] Install the Supabase CLI (pinned dev dependency) and run `supabase init`.
+- [ ] Create the hosted Supabase project and run `supabase link`.
+- [x] Move `schema.sql` into `supabase/migrations/`.
+- [x] Install deps: `@supabase/supabase-js @tanstack/react-query react-router chart.js react-chartjs-2 zod`.
+- [x] Add `.env.local` and make sure `.env*.local` is gitignored.
+- [x] Set up `supabaseClient.ts` and `supabase gen types typescript` (as an npm script).
 
 ### Phase 1: Data model (the core of the resume pitch)
 - [x] Add `unique (id, user_id)` to `categories`. Default `user_id` to `auth.uid()`.
