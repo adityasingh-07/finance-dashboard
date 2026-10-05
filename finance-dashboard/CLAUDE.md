@@ -15,6 +15,22 @@ Known follow-ups already planned for Phase 4: the main bundle is about 690 KB an
 
 Update or remove this section once these are done.
 
+## Deployment
+
+- **Live site:** https://finance-dashboard-three-virid.vercel.app (Vercel project , built from this folder with ; SPA rewrites make deep links work).
+- **Database:** hosted Supabase project  (Sydney). This folder is linked, so {"_tag":"Error","error":{"code":"ShowHelp","message":"Unknown subcommand "..." for "supabase"
+
+Unrecognized flag: --linked\ in command supabase"}} commands target it.
+- **Ship a schema change:** add a migration, test locally (> finance-dashboard@0.0.0 db:reset
+> supabase db reset
+
+{"target":"local","version":"","message":"Reset local database."}), then {"_tag":"Error","error":{"code":"UnrecognizedOption","message":"Unrecognized flag: --linked\ in command supabase db push
+
+  Did you mean this?
+    --linked"}}.
+- **Ship the front end:**  from  (no Git integration yet). Vercel env vars: , , , .
+- **Demo account** ( / , public on purpose):  rebuilds it, pg_cron runs that nightly at 18:00 UTC, and a trigger on  keeps its email and password from being changed. To reset it by hand: .
+
 ## Repo layout quirk
 
 The git root is the **parent** directory (`Personal Finance Dashboard/`), and this project lives in `finance-dashboard/`. Run npm and Supabase commands from `finance-dashboard/`. Git paths show up as `finance-dashboard/...`.
