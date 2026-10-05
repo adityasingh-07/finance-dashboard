@@ -17,19 +17,14 @@ Update or remove this section once these are done.
 
 ## Deployment
 
-- **Live site:** https://finance-dashboard-three-virid.vercel.app (Vercel project , built from this folder with ; SPA rewrites make deep links work).
-- **Database:** hosted Supabase project  (Sydney). This folder is linked, so {"_tag":"Error","error":{"code":"ShowHelp","message":"Unknown subcommand "..." for "supabase"
-
-Unrecognized flag: --linked\ in command supabase"}} commands target it.
-- **Ship a schema change:** add a migration, test locally (> finance-dashboard@0.0.0 db:reset
-> supabase db reset
-
-{"target":"local","version":"","message":"Reset local database."}), then {"_tag":"Error","error":{"code":"UnrecognizedOption","message":"Unrecognized flag: --linked\ in command supabase db push
-
-  Did you mean this?
-    --linked"}}.
-- **Ship the front end:**  from  (no Git integration yet). Vercel env vars: , , , .
-- **Demo account** ( / , public on purpose):  rebuilds it, pg_cron runs that nightly at 18:00 UTC, and a trigger on  keeps its email and password from being changed. To reset it by hand: .
+- **Live site:** https://finance-dashboard-three-virid.vercel.app (Vercel project `finance-dashboard`). `vercel.json` sets the Vite build and SPA rewrites, so deep links work.
+- **Vercel builds from GitHub on every push to `main`.** The project's Root Directory must be `finance-dashboard`, because the git root is the parent folder. If it isn't, the build produces an empty site and production returns 404. Check this before pushing if deploys change.
+- **Database:** hosted Supabase project `kclfdjmvjxtsdvbwnszi` (Sydney). This folder is linked, so `npx supabase ... --linked` commands target it.
+- **Ship a schema change:** add a migration, test locally (`npm run db:reset`, then `npm run db:test`), then run `npx supabase db push --linked`.
+- **Vercel env vars:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_DEMO_EMAIL`, `VITE_DEMO_PASSWORD` (production and preview).
+- **Roll back a bad deploy:** `npx vercel@latest promote <previous-deployment-url> --yes` (find URLs with `npx vercel@latest ls finance-dashboard`).
+- **Demo account** (`demo@example.com` / `demo-password-123`, public on purpose): `reset_demo_data()` rebuilds it, pg_cron runs that nightly at 18:00 UTC, and a trigger on `auth.users` keeps its email and password from being changed. To reset it by hand, run `select public.reset_demo_data();` with `npx supabase db query --linked`.
+- **When writing files from a shell command, never put backticks inside double quotes.** Bash executes them as commands. Write file content with the editor tools instead.
 
 ## Repo layout quirk
 
