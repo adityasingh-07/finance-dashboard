@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Personal finance dashboard: users log expenses, set monthly budgets per category, and see spending charts. React 19 + TypeScript (Vite), Supabase (Postgres/Auth/RLS), Chart.js. The design, diagrams and phased roadmap are in `docs/ARCHITECTURE.md`. Check its roadmap checkboxes to see what's built, and tick them when you finish an item.
 
-**Current state:** the database layer (Phase 1) is done and tested. Front-end dependencies are installed and `src/lib/supabaseClient.ts` is wired to generated types, but there's no UI yet: `src/App.tsx` is a placeholder, and no router or QueryClient provider is set up.
+**Current state:** Phases 0–2 are done: database, auth, and CRUD pages for expenses, budgets and categories. The dashboard (`src/pages/DashboardPage.tsx`) shows summary numbers and quick-add only; charts are Phase 3.
 
 ## Repo layout quirk
 
@@ -18,7 +18,13 @@ npm run build      # tsc -b && vite build (type-check is part of build)
 npm run lint       # oxlint
 ```
 
-There's no JS test runner yet (Vitest is planned).
+```sh
+npm test                              # Vitest, once
+npm run test:watch
+npx vitest run src/lib/money.test.ts  # a single file
+```
+
+Unit tests cover the pure functions in `src/lib/`. There are no component or browser tests in the repo yet (Playwright e2e is planned for Phase 4).
 
 The Supabase CLI is a pinned dev dependency (use `npx supabase ...` for anything without a script). It needs Docker Desktop running.
 
@@ -67,14 +73,19 @@ Charts read from SQL functions such as `monthly_category_summary(p_month)` and `
 ### Migrations and tests
 
 - Migrations are timestamped files in `supabase/migrations/`. Add a new file; don't edit one that has already been pushed to the hosted project.
-- `supabase/tests/rls_test.sql` is pgTAP. When you add or remove assertions, update `select plan(N)` to match or the run fails. Tests switch users with `set local role authenticated` plus `set local request.jwt.claim.sub`.
+- `supabase/tests/*.sql` are pgTAP. When you add or remove assertions, update that file's `select plan(N)` to match or the run fails. Tests switch users with `set local role authenticated` plus `set local request.jwt.claim.sub`.
 - New users get 10 default categories from an `auth.users` insert trigger (`handle_new_user`). Tests and seed data depend on this; for example, the test asserts a count of 10.
 
-### Front end (planned layering, from docs/ARCHITECTURE.md)
+### Front end
 
-- Only query hooks (TanStack Query) in `src/hooks/` call Supabase. Components and pages never import the Supabase client directly.
+- Only `src/hooks/` (TanStack Query) and `src/auth/` call Supabase. Components and pages never import the Supabase client directly.
+- Query keys come from `src/hooks/queryKeys.ts`. Mutations invalidate through `useInvalidate(table)`, which refetches every query that depends on that table (an expense change also refetches summaries). Add a query that reads a table → add its key prefix to `dependsOn`.
+- The selected month lives in the URL (`?month=YYYY-MM`) via `useSelectedMonth()`, and the nav links carry it between pages.
+- On sign-out, `AuthProvider` clears the whole query cache, so one user's data is never shown to the next.
+- Postgres errors reach the UI through `friendlyError(err, overrides)` in `src/lib/dbErrors.ts`, keyed by SQLSTATE (`23505` = duplicate, `23503` = still referenced). Constraint violations come back from PostgREST as HTTP 409, so seeing a 409 in the console for an expected conflict is normal.
 - Chart components take already-shaped data as props, and don't fetch or aggregate.
-- Cents-to-display and date/month logic live in pure functions in `src/lib/` (`money.ts`, `dates.ts`).
+- Cents-to-display and date/month logic live in pure functions in `src/lib/` (`money.ts`, `dates.ts`), with tests next to them. Dates are `'YYYY-MM-DD'` strings in local time; never use `toISOString()` to get a date, because it converts to UTC.
+- `monthly_category_summary` returns `limit_cents`, `remaining_cents` and `pct_used` as NULL when there's no budget, but the generated types say `number`. Use `CategorySummary` from `useMonthlySummary.ts`, which corrects this.
 - DB types in `src/lib/database.types.ts` are generated (`npm run db:types`), never hand-edited. The output is unformatted; that's expected.
 
 ### TypeScript settings that affect how you write code

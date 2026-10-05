@@ -70,6 +70,9 @@ isOneToOne: false
               "cumulative_cents": number,"spent_cents": number,"spent_on": string
             }[]
                            },
+"delete_category":
+{ Args: { "p_category_id": string,"p_reassign_to"?: string }; Returns: undefined
+                           },
 "monthly_category_summary":
 { Args: { "p_month": string }; Returns: {
               "category_id": string,"color": string,"limit_cents": number,"name": string,"pct_used": number,"remaining_cents": number,"spent_cents": number

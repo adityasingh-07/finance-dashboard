@@ -304,16 +304,19 @@ finance-dashboard/
 │  │  ├─ 20261006000001_categories.sql
 │  │  ├─ 20261006000002_expenses_budgets.sql
 │  │  ├─ 20261006000003_default_categories.sql
-│  │  └─ 20261006000004_summary_functions.sql
-│  ├─ tests/rls_test.sql   # pgTAP: constraints, RLS isolation, aggregates
+│  │  ├─ 20261006000004_summary_functions.sql
+│  │  └─ 20261007000001_delete_category.sql
+│  ├─ tests/               # pgTAP: constraints, RLS isolation, aggregates, delete_category
 │  └─ seed.sql             # demo user + 3 months of data (dates relative to today)
 ├─ src/
 │  ├─ lib/
 │  │  ├─ supabaseClient.ts
 │  │  ├─ database.types.ts # generated
 │  │  ├─ money.ts          # cents <-> display, Intl.NumberFormat
-│  │  └─ dates.ts          # monthStart, daysInMonth, pace
-│  ├─ auth/AuthProvider.tsx
+│  │  ├─ dates.ts          # local ISO dates, month math
+│  │  ├─ expenseForm.ts    # zod validation -> ExpenseInput
+│  │  └─ dbErrors.ts       # SQLSTATE -> user-facing message
+│  ├─ auth/                # AuthProvider, useAuth, RequireAuth, sign-in/out
 │  ├─ hooks/               # useExpenses, useBudgets, useMonthlySummary, ...
 │  ├─ components/          # ExpenseForm, ExpenseTable, MonthPicker, charts/...
 │  ├─ pages/               # Dashboard, Expenses, Budgets, Categories, Login
@@ -345,10 +348,10 @@ finance-dashboard/
 - [ ] Apply to the hosted Supabase project (`supabase link` + `supabase db push`).
 
 ### Phase 2: Auth + CRUD
-- [ ] AuthProvider, login page, protected routes.
-- [ ] Categories page (CRUD, colour picker).
-- [ ] Expense quick-add form + table with month/category filters, edit and delete.
-- [ ] Budgets page: a grid of categories × the selected month's limits, saved via upsert.
+- [x] AuthProvider, login page, protected routes.
+- [x] Categories page (CRUD, colour picker, move-expenses-then-delete via `delete_category` RPC).
+- [x] Expense quick-add form + table with month/category filters, edit and delete.
+- [x] Budgets page: a grid of categories × the selected month's limits, saved via upsert (plus copy from last month).
 
 ### Phase 3: Dashboard + charts
 - [ ] MonthPicker plus summary cards.
