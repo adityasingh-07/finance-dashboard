@@ -6,8 +6,12 @@ import { friendlyError } from '../lib/dbErrors.ts'
 
 type Mode = 'sign-in' | 'sign-up'
 
-// Matches supabase/seed.sql; only offered in local development.
-const DEMO = { email: 'demo@example.com', password: 'demo-password-123' }
+// The public demo account (see supabase/migrations/*_demo_account.sql).
+// Offered only when both values are configured for this build.
+const DEMO =
+  import.meta.env.VITE_DEMO_EMAIL && import.meta.env.VITE_DEMO_PASSWORD
+    ? { email: import.meta.env.VITE_DEMO_EMAIL, password: import.meta.env.VITE_DEMO_PASSWORD }
+    : null
 
 export function LoginPage() {
   const { session, signOutError } = useAuth()
@@ -106,7 +110,7 @@ export function LoginPage() {
           </button>
         </form>
 
-        {import.meta.env.DEV && isSignIn && (
+        {DEMO && isSignIn && (
           <button
             type="button"
             className="btn btn-ghost auth-demo"
