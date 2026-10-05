@@ -365,11 +365,12 @@ finance-dashboard/
 - [x] Empty states ("No expenses yet — add your first one") and loading skeletons (first load only; month changes dim the previous render).
 
 ### Phase 4: Polish (the "usable UI" proof)
-- [ ] Responsive layout down to 360px, plus dark mode.
-- [ ] Accessibility: labelled inputs, focus states, chart data also available as a table.
-- [ ] Vitest for `lib/`, plus one Playwright e2e test (sign in → add expense → chart updates).
-- [ ] Deploy to Vercel. Add a demo account with seeded data.
-- [ ] README: screenshots or GIF, live link, architecture summary, and the modelling-decisions table.
+- [x] Responsive layout down to 320px, plus dark mode.
+- [x] Accessibility: labelled inputs, focus states, chart data also available as a table. axe finds no WCAG 2.1 A/AA violations on any page in either theme.
+- [x] Vitest for `lib/`, plus a Playwright suite in `e2e/` (including sign in → add expense → chart updates).
+- [x] Deploy to Vercel. Add a demo account with seeded data (protected credentials, nightly reset).
+- [x] README: screenshots, live link, architecture summary, and the modelling-decisions table.
+- [x] Route-level and vendor code-splitting (no chunk over 500 KB).
 
 ### Phase 5: Stretch ("raw data → product")
 - [ ] CSV import: upload, map columns, preview, dedupe (hash of date+amount+note), bulk insert.

@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Personal finance dashboard: users log expenses, set monthly budgets per category, and see spending charts. React 19 + TypeScript (Vite), Supabase (Postgres/Auth/RLS), Chart.js. The design, diagrams and phased roadmap are in `docs/ARCHITECTURE.md`. Check its roadmap checkboxes to see what's built, and tick them when you finish an item.
 
-**Current state:** Phases 0–2 are done: database, auth, and CRUD pages for expenses, budgets and categories. The dashboard (`src/pages/DashboardPage.tsx`) shows summary numbers and quick-add only; charts are Phase 3.
+**Current state:** Phases 0–4 are done and the app is live (see Deployment): database, auth, CRUD pages, dashboard charts, the cloudstudio-inspired redesign, a Playwright suite and the README. Phase 5 (stretch: CSV import, recurring expenses, trends) is next.
 
 ## Resuming work (as of 2026-10-06)
 
 1. Start Docker Desktop, then run `npm run db:start` and `npm run dev`. The demo login is in the Commands section below.
-2. Start Phase 4 (polish: responsive tweaks, Playwright e2e in the repo, deploy, README) using the roadmap in `docs/ARCHITECTURE.md`.
+2. Pick up Phase 5 (stretch) from the roadmap in `docs/ARCHITECTURE.md`. CSV import is the strongest next feature.
 
-Known follow-ups already planned for Phase 4: the main bundle is about 690 KB and still triggers Vite's chunk-size warning (Chart.js is already split out; route-level code-splitting is next), the "move expenses and delete" controls wrap awkwardly in the Categories table on desktop.
+No known follow-ups. The only open Supabase advisor item is leaked-password protection, an auth dashboard setting.
 
 Update or remove this section once these are done.
 
@@ -41,10 +41,11 @@ npm run lint       # oxlint
 ```sh
 npm test                              # Vitest, once
 npm run test:watch
+npm run test:e2e                      # Playwright, against the local stack
 npx vitest run src/lib/money.test.ts  # a single file
 ```
 
-Unit tests cover the pure functions in `src/lib/`. There are no component or browser tests in the repo yet (Playwright e2e is planned for Phase 4).
+Unit tests cover the pure functions in `src/lib/`. Browser tests live in `e2e/` (Playwright + axe) and run against the local stack: `npm run test:e2e`, or a single file with `npx playwright test e2e/budgets.spec.ts`. Specs create a fresh user per test with `signUp()` from `e2e/fixtures.ts`; only read from the seeded demo account (`signInAsDemo()`), never change it. Locate inputs by role (`getByRole('textbox', { name })`), because `getByLabel` also matches chart canvases and selects. Wait for the destination page (for example its `tfoot`) after navigating.
 
 The Supabase CLI is a pinned dev dependency (use `npx supabase ...` for anything without a script). It needs Docker Desktop running.
 
