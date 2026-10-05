@@ -11,6 +11,7 @@ import {
 import { useCategories, type Category } from '../hooks/useCategories.ts'
 import { useMonthlySummary } from '../hooks/useMonthlySummary.ts'
 import { useSelectedMonth } from '../hooks/useSelectedMonth.ts'
+import { summarizeBudgets } from '../lib/budgets.ts'
 import { addMonths, formatMonth, type ISODate } from '../lib/dates.ts'
 import { friendlyError } from '../lib/dbErrors.ts'
 import { centsToInput, formatCents, parseAmountToCents } from '../lib/money.ts'
@@ -21,20 +22,34 @@ export function BudgetsPage() {
 
   const categories = useCategories()
   const budgets = useBudgets(month)
-  const previousBudgets = useBudgets(previousMonth)
   const summary = useMonthlySummary(month)
   const previousSummary = useMonthlySummary(previousMonth)
   const copyBudgets = useCopyBudgets()
 
-  const spentThis = new Map((summary.data ?? []).map((s) => [s.category_id, s.spent_cents]))
-  const spentLast = new Map((previousSummary.data ?? []).map((s) => [s.category_id, s.spent_cents]))
+  // Spend maps are undefined until their query succeeds, so the grid shows
+  // "—" rather than a misleading $0.00 while loading or after an error.
+  const spentThis = summary.data && new Map(summary.data.map((s) => [s.category_id, s.spent_cents]))
+  const spentLast =
+    previousSummary.data && new Map(previousSummary.data.map((s) => [s.category_id, s.spent_cents]))
   const budgetByCategory = new Map((budgets.data ?? []).map((b) => [b.category_id, b]))
 
   const totalBudget = (budgets.data ?? []).reduce((sum, b) => sum + b.limit_cents, 0)
-  const totalSpent = (summary.data ?? []).reduce((sum, s) => sum + s.spent_cents, 0)
-  const totalLast = (previousSummary.data ?? []).reduce((sum, s) => sum + s.spent_cents, 0)
+  const totalLast = previousSummary.data && summarizeBudgets(previousSummary.data).spentCents
+  // Only spending in budgeted categories can push the month over budget.
+  const totals =
+    spentThis &&
+    summarizeBudgets(
+      (categories.data ?? []).map((c) => ({
+        spent_cents: spentThis.get(c.id) ?? 0,
+        limit_cents: budgetByCategory.get(c.id)?.limit_cents ?? null,
+      })),
+    )
 
-  const canCopy = budgets.data?.length === 0 && (previousBudgets.data?.length ?? 0) > 0
+  // Last month had budgets: limit_cents is non-null exactly for budgeted categories.
+  const canCopy =
+    budgets.data?.length === 0 &&
+    (previousSummary.data?.some((s) => s.limit_cents !== null) ?? false)
+  const spendError = summary.error ?? previousSummary.error
 
   return (
     <>
@@ -68,6 +83,22 @@ export function BudgetsPage() {
           <p className="form-error" role="alert">
             {friendlyError(copyBudgets.error)}
           </p>
+        )}
+
+        {spendError && (
+          <div className="form-error" role="alert">
+            Couldn't load spending: {friendlyError(spendError)}{' '}
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => {
+                void summary.refetch()
+                void previousSummary.refetch()
+              }}
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         {categories.isPending || budgets.isPending ? (
@@ -107,17 +138,19 @@ export function BudgetsPage() {
                     month={month}
                     category={category}
                     budget={budgetByCategory.get(category.id)}
-                    spentThis={spentThis.get(category.id) ?? 0}
-                    spentLast={spentLast.get(category.id) ?? 0}
+                    spentThis={spentThis ? (spentThis.get(category.id) ?? 0) : null}
+                    spentLast={spentLast ? (spentLast.get(category.id) ?? 0) : null}
                   />
                 ))}
               </tbody>
               <tfoot>
                 <tr>
                   <td>Total</td>
-                  <td className="num col-last">{formatCents(totalLast)}</td>
-                  <td className={`num${totalBudget > 0 && totalSpent > totalBudget ? ' over' : ''}`}>
-                    {formatCents(totalSpent)}
+                  <td className="num col-last">{formatMaybe(totalLast)}</td>
+                  <td
+                    className={`num${totals && totals.hasBudgets && totals.remainingCents < 0 ? ' over' : ''}`}
+                  >
+                    {formatMaybe(totals?.spentCents)}
                   </td>
                   <td className="num">{formatCents(totalBudget)}</td>
                 </tr>
@@ -128,6 +161,10 @@ export function BudgetsPage() {
       </section>
     </>
   )
+}
+
+function formatMaybe(cents: number | null | undefined): string {
+  return cents === null || cents === undefined ? '—' : formatCents(cents)
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -142,8 +179,9 @@ function BudgetRow({
   month: ISODate
   category: Category
   budget: Budget | undefined
-  spentThis: number
-  spentLast: number
+  /** null while spending is loading or failed to load. */
+  spentThis: number | null
+  spentLast: number | null
 }) {
   const setBudget = useSetBudget()
   const deleteBudget = useDeleteBudget()
@@ -190,7 +228,7 @@ function BudgetRow({
     setBudget.mutate({ category_id: category.id, month, limit_cents: cents }, callbacks)
   }
 
-  const over = budget !== undefined && spentThis > budget.limit_cents
+  const over = budget !== undefined && spentThis !== null && spentThis > budget.limit_cents
   const inputId = `budget-${category.id}`
 
   return (
@@ -200,8 +238,8 @@ function BudgetRow({
           <CategoryLabel name={category.name} color={category.color} />
         </label>
       </td>
-      <td className="num muted col-last">{formatCents(spentLast)}</td>
-      <td className={`num${over ? ' over' : ''}`}>{formatCents(spentThis)}</td>
+      <td className="num muted col-last">{formatMaybe(spentLast)}</td>
+      <td className={`num${over ? ' over' : ''}`}>{formatMaybe(spentThis)}</td>
       <td className="num col-budget">
         <div className="input-money">
           <input
@@ -211,6 +249,9 @@ function BudgetRow({
             autoComplete="off"
             placeholder="No budget"
             value={value}
+            // Locked while a save is in flight so a second edit can't race it
+            // and leave the database holding whichever request landed last.
+            disabled={status === 'saving'}
             onFocus={() => setDraft(value)}
             onChange={(e) => {
               setDraft(e.target.value)

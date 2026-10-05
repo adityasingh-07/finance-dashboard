@@ -8,21 +8,32 @@ import { useInvalidate } from './useInvalidate.ts'
 
 export type Expense = Tables<'expenses'>
 
+// PostgREST returns at most max_rows (1000, supabase/config.toml) per request,
+// silently truncating anything larger, so fetch in pages no bigger than that.
+const PAGE_SIZE = 1000
+
 /** All expenses in the month containing `month`, newest first. */
 export function useExpenses(month: ISODate) {
   return useQuery({
     queryKey: queryKeys.expenses(month),
     queryFn: async () => {
       const { start, end } = monthBounds(month)
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .gte('spent_on', start)
-        .lt('spent_on', end)
-        .order('spent_on', { ascending: false })
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      return data
+      const rows: Expense[] = []
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from('expenses')
+          .select('*')
+          .gte('spent_on', start)
+          .lt('spent_on', end)
+          // id makes the order total, so pages never overlap or skip rows.
+          .order('spent_on', { ascending: false })
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1)
+        if (error) throw error
+        rows.push(...data)
+        if (data.length < PAGE_SIZE) return rows
+      }
     },
   })
 }

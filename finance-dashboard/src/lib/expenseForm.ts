@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { ISODate } from './dates.ts'
+import { MAX_DATE, MIN_DATE, type ISODate } from './dates.ts'
 import { parseAmountToCents } from './money.ts'
 
 /** What the app writes to the expenses table (user_id comes from the DB default). */
@@ -30,7 +30,10 @@ const schema = z.object({
     return cents
   }),
   categoryId: z.string().min(1, 'Choose a category'),
-  spentOn: z.iso.date({ message: 'Choose a date' }),
+  spentOn: z.iso
+    .date({ message: 'Choose a date' })
+    // ISO dates with 4-digit years compare correctly as strings.
+    .refine((d) => d >= MIN_DATE && d <= MAX_DATE, 'Choose a date between 1900 and 2999'),
   note: z.string().trim().max(200, 'Keep notes under 200 characters'),
 })
 

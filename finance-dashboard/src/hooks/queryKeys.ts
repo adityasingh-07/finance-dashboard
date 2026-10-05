@@ -9,9 +9,14 @@ export const queryKeys = {
   summary: (month: ISODate) => ['summary', month] as const,
 }
 
-// Prefixes to invalidate when the underlying table changes.
+// Prefixes to invalidate after each kind of change.
 export const dependsOn = {
   expenses: [['expenses'], ['summary']],
   budgets: [['budgets'], ['summary']],
-  categories: [['categories'], ['expenses'], ['budgets'], ['summary']],
+  // Expense and budget rows only hold category_id, so creating, renaming or
+  // recolouring a category leaves them unchanged. The summary carries the
+  // category name and colour, so it does need a refetch.
+  categories: [['categories'], ['summary']],
+  // Deleting cascades budgets and may move expenses to another category.
+  categoryDelete: [['categories'], ['expenses'], ['budgets'], ['summary']],
 } as const

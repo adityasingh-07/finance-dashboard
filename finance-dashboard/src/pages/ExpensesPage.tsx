@@ -38,7 +38,17 @@ export function ExpensesPage() {
         <h2 id="add-expense-heading" className="card-header">
           Add an expense
         </h2>
-        {categories.data && <ExpenseForm key={month} categories={categories.data} month={month} />}
+        {categories.isError ? (
+          <p className="form-error" role="alert">
+            Couldn't load your categories: {friendlyError(categories.error)}
+          </p>
+        ) : categories.data ? (
+          <ExpenseForm categories={categories.data} month={month} />
+        ) : (
+          <p className="muted" role="status">
+            Loading…
+          </p>
+        )}
       </section>
 
       <section className="card" aria-labelledby="expense-list-heading">
@@ -71,9 +81,9 @@ export function ExpensesPage() {
           <p className="muted" role="status">
             Loading expenses…
           </p>
-        ) : expenses.isError ? (
+        ) : expenses.isError || categories.isError ? (
           <p className="form-error" role="alert">
-            {friendlyError(expenses.error)}
+            {friendlyError(expenses.error ?? categories.error)}
           </p>
         ) : visible.length === 0 ? (
           <div className="empty-state">

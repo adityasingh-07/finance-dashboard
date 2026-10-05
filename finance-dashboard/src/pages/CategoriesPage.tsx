@@ -82,7 +82,7 @@ function AddCategoryForm({ categories }: { categories: Category[] }) {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || createCategory.isPending) return
     createCategory.mutate(
       { name: name.trim(), color },
       {
@@ -185,7 +185,10 @@ function DeleteCategoryControls({
   onCancel: () => void
 }) {
   const deleteCategory = useDeleteCategory()
-  const [reassignTo, setReassignTo] = useState(others[0]?.id ?? '')
+  const [chosenTarget, setChosenTarget] = useState<string | null>(null)
+  // Derived, so a refetched list can't leave the select showing one category
+  // while the stale id of a deleted one is submitted.
+  const reassignTo = others.some((c) => c.id === chosenTarget) ? chosenTarget! : (others[0]?.id ?? '')
 
   function deletePlain() {
     deleteCategory.mutate(
@@ -245,7 +248,7 @@ function DeleteCategoryControls({
       <select
         id={`reassign-${category.id}`}
         value={reassignTo}
-        onChange={(e) => setReassignTo(e.target.value)}
+        onChange={(e) => setChosenTarget(e.target.value)}
         style={{ width: 'auto' }}
       >
         {others.map((c) => (
@@ -276,7 +279,7 @@ function EditCategoryRow({ category, onDone }: { category: Category; onDone: () 
   const [color, setColor] = useState(category.color)
 
   function save() {
-    if (!name.trim()) return
+    if (!name.trim() || updateCategory.isPending) return
     updateCategory.mutate({ id: category.id, name: name.trim(), color }, { onSuccess: onDone })
   }
 
@@ -284,7 +287,9 @@ function EditCategoryRow({ category, onDone }: { category: Category; onDone: () 
     <tr
       className="row-editing"
       onKeyDown={(e) => {
-        if (e.key === 'Enter') save()
+        // Enter on Save/Cancel activates that button; saving here as well would
+        // save on Cancel, or send the update twice on Save.
+        if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') save()
         if (e.key === 'Escape') onDone()
       }}
     >

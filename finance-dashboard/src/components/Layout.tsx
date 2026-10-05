@@ -1,6 +1,5 @@
 import { NavLink, Outlet, useSearchParams } from 'react-router'
 import { useAuth } from '../auth/AuthContext.ts'
-import { signOut } from '../auth/authActions.ts'
 
 const NAV = [
   { to: '/', label: 'Dashboard', end: true },
@@ -10,7 +9,7 @@ const NAV = [
 ]
 
 export function Layout() {
-  const { session } = useAuth()
+  const { session, signOut } = useAuth()
   const [params] = useSearchParams()
 
   // Keep the selected month when moving between pages.

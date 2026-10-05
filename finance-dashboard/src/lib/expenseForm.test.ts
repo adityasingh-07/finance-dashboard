@@ -16,6 +16,11 @@ describe('parseExpenseForm', () => {
     expect(result.ok && result.data.note).toBeNull()
   })
 
+  it.each(['0050-06-01', '1899-12-31', '3000-01-01'])('rejects out-of-range date %s', (spentOn) => {
+    const result = parseExpenseForm({ ...valid, spentOn })
+    expect(result).toEqual({ ok: false, errors: { spentOn: 'Choose a date between 1900 and 2999' } })
+  })
+
   it('reports one message per invalid field', () => {
     const result = parseExpenseForm({ amount: '0', categoryId: '', spentOn: '', note: 'x'.repeat(201) })
     expect(result).toEqual({

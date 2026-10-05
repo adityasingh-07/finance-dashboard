@@ -1,11 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { dependsOn } from './queryKeys.ts'
 
-/** Returns a function that refetches every query depending on `table`. */
-export function useInvalidate(table: keyof typeof dependsOn) {
+/** Returns a function that refetches every query affected by `change` (see dependsOn). */
+export function useInvalidate(change: keyof typeof dependsOn) {
   const queryClient = useQueryClient()
   return () =>
     Promise.all(
-      dependsOn[table].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      dependsOn[change].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
     )
 }

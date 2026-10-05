@@ -46,22 +46,18 @@ export function useDeleteBudget() {
   })
 }
 
-/** Copies every budget from one month into another (which should be empty). */
+/**
+ * Copies a month's budgets into another month, skipping categories that
+ * already have one there. Done in the database in one statement; resolves to
+ * the number of budgets copied.
+ */
 export function useCopyBudgets() {
   const invalidate = useInvalidate('budgets')
   return useMutation({
     mutationFn: async ({ from, to }: { from: ISODate; to: ISODate }) => {
-      const { data, error } = await supabase
-        .from('budgets')
-        .select('category_id, limit_cents')
-        .eq('month', from)
+      const { data, error } = await supabase.rpc('copy_budgets', { p_from: from, p_to: to })
       if (error) throw error
-      if (data.length === 0) return
-
-      const { error: insertError } = await supabase
-        .from('budgets')
-        .insert(data.map((b) => ({ ...b, month: to })))
-      if (insertError) throw insertError
+      return data
     },
     onSuccess: invalidate,
   })

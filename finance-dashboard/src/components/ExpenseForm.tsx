@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import type { Category } from '../hooks/useCategories.ts'
 import { useAddExpense } from '../hooks/useExpenses.ts'
-import { formatDay, monthStart, todayISO, type ISODate } from '../lib/dates.ts'
+import { defaultExpenseDate, formatDay, MAX_DATE, MIN_DATE, type ISODate } from '../lib/dates.ts'
 import { friendlyError } from '../lib/dbErrors.ts'
 import { parseExpenseForm, type ExpenseFormErrors } from '../lib/expenseForm.ts'
 import { formatCents } from '../lib/money.ts'
@@ -24,33 +24,44 @@ function writeLastCategory(id: string) {
   }
 }
 
-/** Today if it falls in `month`, otherwise the 1st of `month`. */
-function defaultDate(month: ISODate): ISODate {
-  const today = todayISO()
-  return monthStart(today) === month ? today : month
+/**
+ * The category to show: the user's pick if it still exists, else the last one
+ * used, else the first. Derived on every render rather than stored, so a
+ * refetched category list (one added or deleted elsewhere) can never leave
+ * the select showing one category while the form submits another.
+ */
+function resolveCategory(categories: Category[], chosen: string | null): string {
+  const exists = (id: string | null) => id !== null && categories.some((c) => c.id === id)
+  if (exists(chosen)) return chosen!
+  const last = readLastCategory()
+  if (exists(last)) return last!
+  return categories[0]?.id ?? ''
 }
 
 /**
  * Quick-add form. Designed for speed: amount is focused, category and date
- * stick between entries, Enter submits. Remount with `key={month}` to reset
- * the default date when the viewed month changes.
+ * stick between entries, Enter submits.
+ *
+ * The date defaults to today (or the 1st of a past/future `month`) and is
+ * recomputed on every render, so a tab left open overnight doesn't keep using
+ * yesterday. A date the user picks sticks only while viewing that month.
  */
 export function ExpenseForm({ categories, month }: { categories: Category[]; month: ISODate }) {
   const addExpense = useAddExpense()
   const amountRef = useRef<HTMLInputElement>(null)
 
   const [amount, setAmount] = useState('')
-  const [categoryId, setCategoryId] = useState(() => {
-    const last = readLastCategory()
-    return categories.some((c) => c.id === last) ? last! : (categories[0]?.id ?? '')
-  })
-  const [spentOn, setSpentOn] = useState(() => defaultDate(month))
+  const [chosenCategory, setChosenCategory] = useState<string | null>(null)
+  const categoryId = resolveCategory(categories, chosenCategory)
+  const [dateOverride, setDateOverride] = useState<{ month: ISODate; value: string } | null>(null)
+  const spentOn = dateOverride?.month === month ? dateOverride.value : defaultExpenseDate(month)
   const [note, setNote] = useState('')
   const [errors, setErrors] = useState<ExpenseFormErrors>({})
   const [notice, setNotice] = useState<string | null>(null)
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
+    if (addExpense.isPending) return
     setNotice(null)
 
     const parsed = parseExpenseForm({ amount, categoryId, spentOn, note })
@@ -103,7 +114,7 @@ export function ExpenseForm({ categories, month }: { categories: Category[]; mon
           <span>Category</span>
           <select
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
+            onChange={(e) => setChosenCategory(e.target.value)}
             aria-invalid={errors.categoryId ? true : undefined}
           >
             {categories.map((c) => (
@@ -118,8 +129,10 @@ export function ExpenseForm({ categories, month }: { categories: Category[]; mon
           <span>Date</span>
           <input
             type="date"
+            min={MIN_DATE}
+            max={MAX_DATE}
             value={spentOn}
-            onChange={(e) => setSpentOn(e.target.value)}
+            onChange={(e) => setDateOverride({ month, value: e.target.value })}
             aria-invalid={errors.spentOn ? true : undefined}
           />
         </label>

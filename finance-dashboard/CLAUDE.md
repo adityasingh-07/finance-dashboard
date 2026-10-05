@@ -6,6 +6,17 @@ Personal finance dashboard: users log expenses, set monthly budgets per category
 
 **Current state:** Phases 0–2 are done: database, auth, and CRUD pages for expenses, budgets and categories. The dashboard (`src/pages/DashboardPage.tsx`) shows summary numbers and quick-add only; charts are Phase 3.
 
+## Resuming work (as of 2026-10-06)
+
+1. Start Docker Desktop, then run `npm run db:start` and `npm run dev`. The demo login is in the Commands section below.
+2. Start Phase 3, the dashboard charts, using the roadmap in `docs/ARCHITECTURE.md`.
+
+The `/code-review xhigh` findings on Phase 2 have all been fixed, each with a regression check.
+
+Known follow-ups already planned for Phase 4: the bundle is about 671 KB, which triggers Vite's chunk-size warning (needs code-splitting), and the "move expenses and delete" controls wrap awkwardly in the Categories table on desktop.
+
+Update or remove this section once these are done.
+
 ## Repo layout quirk
 
 The git root is the **parent** directory (`Personal Finance Dashboard/`), and this project lives in `finance-dashboard/`. Run npm and Supabase commands from `finance-dashboard/`. Git paths show up as `finance-dashboard/...`.
@@ -79,7 +90,11 @@ Charts read from SQL functions such as `monthly_category_summary(p_month)` and `
 ### Front end
 
 - Only `src/hooks/` (TanStack Query) and `src/auth/` call Supabase. Components and pages never import the Supabase client directly.
-- Query keys come from `src/hooks/queryKeys.ts`. Mutations invalidate through `useInvalidate(table)`, which refetches every query that depends on that table (an expense change also refetches summaries). Add a query that reads a table → add its key prefix to `dependsOn`.
+- Query keys come from `src/hooks/queryKeys.ts`. Mutations invalidate through `useInvalidate(change)`, where `dependsOn[change]` lists the query prefixes that kind of change affects (an expense change also refetches summaries; renaming a category doesn't refetch expenses, but deleting one does, via `categoryDelete`). Add a query that reads a table → add its key prefix to the relevant `dependsOn` entries.
+- Multi-row writes that must be atomic, or that could hit a unique constraint, go in a SQL function called by RPC (`delete_category`, `copy_budgets`), not in client-side select-then-insert sequences.
+- `useExpenses` pages through results because PostgREST caps responses at `max_rows` (1000). Any new list query that can exceed 1000 rows needs the same treatment, with a total order (end with `id`).
+- Month budget arithmetic (remaining, over budget) goes through `summarizeBudgets()` in `src/lib/budgets.ts`. Spending in categories without a budget never counts as over budget.
+- Form state that refers to server data (a selected category id) is derived from the current list on every render, not stored once, so a refetch can't leave it pointing at a deleted row. Default dates are computed per render for the same reason (`defaultExpenseDate()`).
 - The selected month lives in the URL (`?month=YYYY-MM`) via `useSelectedMonth()`, and the nav links carry it between pages.
 - On sign-out, `AuthProvider` clears the whole query cache, so one user's data is never shown to the next.
 - Postgres errors reach the UI through `friendlyError(err, overrides)` in `src/lib/dbErrors.ts`, keyed by SQLSTATE (`23505` = duplicate, `23503` = still referenced). Constraint violations come back from PostgREST as HTTP 409, so seeing a 409 in the console for an expected conflict is normal.

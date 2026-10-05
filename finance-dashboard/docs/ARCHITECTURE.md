@@ -305,8 +305,9 @@ finance-dashboard/
 │  │  ├─ 20261006000002_expenses_budgets.sql
 │  │  ├─ 20261006000003_default_categories.sql
 │  │  ├─ 20261006000004_summary_functions.sql
-│  │  └─ 20261007000001_delete_category.sql
-│  ├─ tests/               # pgTAP: constraints, RLS isolation, aggregates, delete_category
+│  │  ├─ 20261007000001_delete_category.sql
+│  │  └─ 20261007000002_copy_budgets.sql
+│  ├─ tests/               # pgTAP: constraints, RLS isolation, aggregates, RPCs
 │  └─ seed.sql             # demo user + 3 months of data (dates relative to today)
 ├─ src/
 │  ├─ lib/

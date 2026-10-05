@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import type { Category } from '../hooks/useCategories.ts'
 import { useDeleteExpense, useUpdateExpense, type Expense } from '../hooks/useExpenses.ts'
-import { formatDay } from '../lib/dates.ts'
+import { formatDay, MAX_DATE, MIN_DATE } from '../lib/dates.ts'
 import { friendlyError } from '../lib/dbErrors.ts'
 import { parseExpenseForm, type ExpenseFormErrors } from '../lib/expenseForm.ts'
 import { centsToInput, formatCents } from '../lib/money.ts'
@@ -116,12 +116,16 @@ function EditRow({
   const set = (field: keyof typeof values) => (value: string) =>
     setValues((v) => ({ ...v, [field]: value }))
 
+  const busy = updateExpense.isPending || deleteExpense.isPending
+
   function save() {
+    if (busy) return
     const parsed = parseExpenseForm(values)
     if (!parsed.ok) {
       setErrors(parsed.errors)
       return
     }
+    setErrors({})
     updateExpense.mutate({ id: expense.id, ...parsed.data }, { onSuccess: onDone })
   }
 
@@ -134,7 +138,6 @@ function EditRow({
   const errorText = [...Object.values(errors), mutationError ? friendlyError(mutationError) : null]
     .filter(Boolean)
     .join(' · ')
-  const busy = updateExpense.isPending || deleteExpense.isPending
 
   return (
     <tr className="row-editing" onKeyDown={onKeyDown}>
@@ -142,6 +145,8 @@ function EditRow({
         <input
           type="date"
           aria-label="Date"
+          min={MIN_DATE}
+          max={MAX_DATE}
           value={values.spentOn}
           onChange={(e) => set('spentOn')(e.target.value)}
           aria-invalid={errors.spentOn ? true : undefined}
@@ -196,7 +201,10 @@ function EditRow({
                 type="button"
                 className="btn btn-sm btn-danger-solid"
                 disabled={busy}
-                onClick={() => deleteExpense.mutate(expense.id)}
+                onClick={() => {
+                  setErrors({})
+                  deleteExpense.mutate(expense.id)
+                }}
               >
                 {deleteExpense.isPending ? 'Deleting…' : 'Confirm delete'}
               </button>

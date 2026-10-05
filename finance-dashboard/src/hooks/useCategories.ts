@@ -44,7 +44,7 @@ export function useUpdateCategory() {
  * `reassignTo` is given; with one, its expenses are moved first (atomically).
  */
 export function useDeleteCategory() {
-  const invalidate = useInvalidate('categories')
+  const invalidate = useInvalidate('categoryDelete')
   return useMutation({
     mutationFn: async ({ id, reassignTo }: { id: string; reassignTo?: string }) => {
       const { error } = await supabase.rpc('delete_category', {

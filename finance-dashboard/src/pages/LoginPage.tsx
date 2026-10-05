@@ -10,7 +10,7 @@ type Mode = 'sign-in' | 'sign-up'
 const DEMO = { email: 'demo@example.com', password: 'demo-password-123' }
 
 export function LoginPage() {
-  const { session } = useAuth()
+  const { session, signOutError } = useAuth()
   const location = useLocation()
   const [mode, setMode] = useState<Mode>('sign-in')
   const [email, setEmail] = useState('')
@@ -88,6 +88,11 @@ export function LoginPage() {
           {notice && (
             <p className="form-notice" role="status">
               {notice}
+            </p>
+          )}
+          {signOutError && !error && (
+            <p className="form-error" role="alert">
+              {signOutError}
             </p>
           )}
 

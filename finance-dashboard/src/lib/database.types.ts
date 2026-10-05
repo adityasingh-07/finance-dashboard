@@ -62,7 +62,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "create_default_categories":
+            "copy_budgets":
+{ Args: { "p_from": string,"p_to": string }; Returns: number
+                           },
+"create_default_categories":
 { Args: { "p_user_id": string }; Returns: undefined
                            },
 "daily_spend":
