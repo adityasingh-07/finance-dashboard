@@ -929,6 +929,19 @@ input[type='color'] {
   justify-content: flex-end;
 }
 
+/* A full-width row for confirming a destructive action (category delete). */
+.row-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+}
+
+.row-confirm .inline-confirm {
+  justify-content: flex-start;
+}
+
 /* ---------------------------------------------------------------------------
    Dashboard hero: the month's key fact, set as a headline
    --------------------------------------------------------------------------- */

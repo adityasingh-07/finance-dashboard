@@ -138,34 +138,43 @@ function CategoryRow({ category, others }: { category: Category; others: Categor
     return <EditCategoryRow category={category} onDone={() => setMode('view')} />
   }
 
+  if (mode !== 'view') {
+    // Deleting needs room for a question, a picker and two buttons, so the
+    // row spans the table instead of squeezing them into the actions cell.
+    return (
+      <tr className="row-editing">
+        <td colSpan={2}>
+          <div className="row-confirm">
+            <CategoryLabel name={category.name} color={category.color} />
+            <DeleteCategoryControls
+              category={category}
+              others={others.filter((c) => c.id !== category.id)}
+              mode={mode}
+              onNeedsReassign={() => setMode('reassign')}
+              onCancel={() => setMode('view')}
+            />
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
   return (
     <tr>
       <td>
         <CategoryLabel name={category.name} color={category.color} />
       </td>
       <td className="actions">
-        {mode === 'view' ? (
-          <>
-            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setMode('edit')}>
-              Edit
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm btn-ghost btn-danger"
-              onClick={() => setMode('confirm-delete')}
-            >
-              Delete
-            </button>
-          </>
-        ) : (
-          <DeleteCategoryControls
-            category={category}
-            others={others.filter((c) => c.id !== category.id)}
-            mode={mode}
-            onNeedsReassign={() => setMode('reassign')}
-            onCancel={() => setMode('view')}
-          />
-        )}
+        <button type="button" className="btn btn-sm btn-ghost" onClick={() => setMode('edit')}>
+          Edit
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost btn-danger"
+          onClick={() => setMode('confirm-delete')}
+        >
+          Delete
+        </button>
       </td>
     </tr>
   )
