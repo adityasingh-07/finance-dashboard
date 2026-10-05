@@ -8,12 +8,15 @@ Personal finance dashboard: users log expenses, set monthly budgets per category
 
 ## Resuming work (as of 2026-10-06)
 
+Phases 0–4 are shipped and live; the working tree is clean and `main` is pushed. To pick up:
+
 1. Start Docker Desktop, then run `npm run db:start` and `npm run dev`. The demo login is in the Commands section below.
-2. Pick up Phase 5 (stretch) from the roadmap in `docs/ARCHITECTURE.md`. CSV import is the strongest next feature.
+2. Phase 5 is planned in detail in `docs/ARCHITECTURE.md` (section 9). Start with **5a, CSV import**: its notes cover parsing, the import flow, rule-based categorisation and database-side deduplication. Then 5b (trend chart), 5c (recurring expenses), 5d (over-budget nudge).
+3. Housekeeping items (CI, verifying hosted sign-up email, leaked-password protection, free-tier pausing) are listed at the end of Phase 5.
 
-No known follow-ups. The only open Supabase advisor item is leaked-password protection, an auth dashboard setting.
+Before calling any feature done: `npm run build`, `npm run lint`, `npm test`, `npm run db:test` and `npm run test:e2e` all pass, and you have looked at the UI in light, dark and at 390px. Schema changes also need `npx supabase db push --linked`. Pushing to `main` deploys the front end automatically.
 
-Update or remove this section once these are done.
+Update this section at the end of each session.
 
 ## Deployment
 

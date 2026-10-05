@@ -373,9 +373,35 @@ finance-dashboard/
 - [x] Route-level and vendor code-splitting (no chunk over 500 KB).
 
 ### Phase 5: Stretch ("raw data → product")
-- [ ] CSV import: upload, map columns, preview, dedupe (hash of date+amount+note), bulk insert.
-- [ ] Recurring expenses.
-- [ ] 6-month trend chart and over-budget banners.
+
+Reviewed on 2026-10-06, after Phases 0–4 shipped. Recommended order, biggest resume value first. Each item follows the existing rules in `CLAUDE.md`: migrations with RLS and pgTAP tests, logic in pure `src/lib` functions with unit tests, an e2e spec, and the dataviz rules for any chart.
+
+**5a. CSV import of bank statements** (the clearest "raw data → product" story)
+- [ ] Parse in the browser (a small tested parser, or Papa Parse): quoted fields, `dd/mm/yyyy` and ISO dates, one signed amount column *or* separate debit/credit columns. Skip credits and transfers by default.
+- [ ] Flow: upload → auto-detect columns → user confirms the mapping (date, amount, description) → preview with per-row errors → choose categories → import.
+- [ ] Categorise with rules: a `category_rules` table (`pattern` → `category_id`, owner-matched FK, RLS), pre-filled by remembering how the user categorised a description last time; unmatched rows default to "Other".
+- [ ] Deduplicate in the database, not the browser: add `expenses.import_key text` (hash of date + amount + normalised description, plus an occurrence counter for genuine same-day repeats) with `unique (user_id, import_key)`; an `import_expenses(jsonb)` RPC inserts with `on conflict do nothing` and returns inserted/skipped counts, so re-uploading a statement is safe.
+- [ ] Truncate descriptions to the 200-character `note` limit; cap one import at a few thousand rows; show "N imported, M already there".
+- [ ] Tests: parser fixtures for at least two real bank export formats (e.g. CommBank, ANZ), pgTAP for the RPC (dedupe, RLS, owner-matched categories), an e2e spec that uploads a fixture file.
+
+**5b. 6-month trend chart**
+- [ ] SQL function `monthly_totals(p_from, p_to)`: per month, all spending, budgeted spending, total budget (`security invoker`, `search_path = ''`).
+- [ ] One column chart of monthly spending with the budget as a dashed reference line, both in dollars on one axis (no dual axis). The current month is highlighted, earlier months use a de-emphasis colour. Lazy canvas, table view and `aria-label`, like the existing charts.
+
+**5c. Recurring expenses** (rent, subscriptions)
+- [ ] `recurring_expenses` table: category, amount, note, `day_of_month` (clamped to the month's last day), start month, optional end month; RLS and owner-matched FK.
+- [ ] Create occurrences idempotently: `expenses.recurring_id` + `unique (recurring_id, spent_on)`, filled by a `materialise_recurring()` function that pg_cron runs daily. Future occurrences are shown as "upcoming", not inserted.
+- [ ] UI: "Make this recurring" from an expense's edit row, plus a small list to pause or stop recurring items.
+
+**5d. Over-budget nudge** (most of the original "banners" idea already ships: the dashboard headline names every overspent category)
+- [ ] After quick-add, if the expense pushes its category over budget, say so in the confirmation ("This puts Dining Out $12.40 over its budget"), using the same exact-amount rules as `buildHero`.
+
+**Housekeeping (any time)**
+- [ ] CI: a GitHub Actions workflow running lint, `npm run build` (type-checks app, config and e2e) and unit tests on every push; optionally `supabase start` plus pgTAP and Playwright.
+- [ ] Confirm hosted sign-up with a real email address. If confirmation emails don't arrive (Supabase's built-in email is restricted), add a custom SMTP provider or keep "Confirm email" off.
+- [ ] Turn on leaked-password protection in Supabase Auth if the plan allows (the last open security-advisor item).
+- [ ] Check that the free-tier project isn't paused for inactivity (the nightly pg_cron job may or may not count as activity).
+
 
 ---
 
